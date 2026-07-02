@@ -8,18 +8,18 @@
 
 **Purpose**: Finish the non-code foundation so implementation starts with a clear product, design, data, and Comena-specific direction.
 
-- [ ] T001 Review `docs/spec-kit/plan.md` and confirm the v0.x to v1.0 version strategy.
-- [ ] T002 [P] Refresh Comena research and save a compact brief to `docs/research/comena-brief.md`, including product understanding, public stack signals, likely workflow pain, and claims to avoid.
-- [ ] T003 [P] Do a focused public procurement/product example research pass and save findings to `docs/data-research/grounding-notes.md`.
-- [ ] T004 [P] Create `docs/data-research/source-map.md` mapping each grounded synthetic data choice to a public source, public pattern, or explicit design assumption.
-- [ ] T005 [P] Create `docs/design-system/visual-direction.md` defining visual tone, color direction, typography principles, density, motion, and anti-patterns.
-- [ ] T006 [P] Create `docs/design-system/component-rules.md` defining rules for tables, badges, buttons, tabs, sidebars, review panels, confidence states, and cards.
-- [ ] T007 [P] Create `docs/design-system/screen-map.md` mapping each major screen/section to its goal, proof point, primary action, and loading/success/error/empty/partial states.
-- [ ] T008 [P] Create `docs/design-system/wireframes.md` with low-fidelity screen compositions for opening, workflow, evals, candidate proof, CTA, and onboarding/setup.
-- [ ] T009 [P] Create `docs/design-system/copy-principles.md` defining direct/bold voice, Comena framing, candidate tone, banned words/phrases, and no-overclaim rules.
-- [ ] T010 Create `docs/qa/reviewer-test-plan.md` defining the 60-second first impression test, 3-minute walkthrough test, and final send-readiness checklist.
-- [ ] T011 Update `docs/spec-kit/plan.md` if Comena research or data research changes product, stack, mock data, or backend assumptions.
-- [ ] T012 Confirm that the design docs preserve the constitution: candidate story, product proof, trust before flash, UX states, frontend-first sequence, Comena specificity, and engineering thesis.
+- [x] T001 Review `docs/spec-kit/plan.md` and confirm the v0.x to v1.0 version strategy.
+- [x] T002 [P] Refresh Comena research and save a compact brief to `docs/research/comena-brief.md`, including product understanding, public stack signals, likely workflow pain, and claims to avoid.
+- [x] T003 [P] Do a focused public procurement/product example research pass and save findings to `docs/data-research/grounding-notes.md`.
+- [x] T004 [P] Create `docs/data-research/source-map.md` mapping each grounded synthetic data choice to a public source, public pattern, or explicit design assumption.
+- [x] T005 [P] Create `docs/design-system/visual-direction.md` defining visual tone, color direction, typography principles, density, motion, and anti-patterns.
+- [x] T006 [P] Create `docs/design-system/component-rules.md` defining rules for tables, badges, buttons, tabs, sidebars, review panels, confidence states, and cards.
+- [x] T007 [P] Create `docs/design-system/screen-map.md` mapping each major screen/section to its goal, proof point, primary action, and loading/success/error/empty/partial states.
+- [x] T008 [P] Create `docs/design-system/wireframes.md` with low-fidelity screen compositions for opening, workflow, evals, candidate proof, CTA, and onboarding/setup.
+- [x] T009 [P] Create `docs/design-system/copy-principles.md` defining direct/bold voice, Comena framing, candidate tone, banned words/phrases, and no-overclaim rules.
+- [x] T010 Create `docs/qa/reviewer-test-plan.md` defining the 60-second first impression test, 3-minute walkthrough test, and final send-readiness checklist.
+- [x] T011 Update `docs/spec-kit/plan.md` if Comena research or data research changes product, stack, mock data, or backend assumptions.
+- [x] T012 Confirm that the design docs preserve the constitution: candidate story, product proof, trust before flash, UX states, frontend-first sequence, Comena specificity, and engineering thesis.
 
 **Checkpoint**: Research, design direction, data grounding, and reviewer QA plan are ready. No app code is required yet.
 
