@@ -8,9 +8,9 @@ export const confidenceThresholds = {
 export function getConfidenceBand(
   score: number | undefined,
   options: {
-    hasCatalogMatch?: boolean;
+    hasCatalogMatch: boolean;
     hasBlockingEvidence?: boolean;
-  } = {},
+  },
 ): ConfidenceBand {
   if (!options.hasCatalogMatch) {
     return "no-match";
