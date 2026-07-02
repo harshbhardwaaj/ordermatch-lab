@@ -9,9 +9,7 @@ This document uses `ui-ux-pro-max` recommendations from July 2, 2026.
 
 Primary design-system query:
 
-```bash
-python3 /Users/harsh/.codex/skills/ui-ux-pro-max/scripts/search.py "B2B industrial AI order automation SaaS operational workbench ERP review dashboard trust dense" --design-system -f markdown -p "OrderMatch Lab"
-```
+`B2B industrial AI order automation SaaS operational workbench ERP review dashboard trust dense`
 
 Adopted recommendations:
 
