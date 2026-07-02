@@ -1,6 +1,15 @@
 import type { UnitCode } from "@/types/catalog";
 
-export type OrderSource = "email" | "pdf" | "rfq" | "manual" | "sample";
+export type OrderSource =
+  | "email"
+  | "pdf"
+  | "excel"
+  | "csv"
+  | "rfq"
+  | "rfq-attachment"
+  | "pasted-text"
+  | "manual"
+  | "sample";
 
 export type OrderStatus =
   | "new"
