@@ -105,7 +105,7 @@ Phase 3:
 - Real parser or extraction logic.
 - Hybrid search / SKU matching prototype.
 - Evaluation scripts and generated benchmark data.
-- Optional backend/API.
+- Backend/API layer for persistence, extraction, matching, eval outputs, and secrets once the product surface is ready.
 
 ## Mock Data Plan
 
@@ -184,4 +184,3 @@ The first polished version succeeds if a Comena reviewer can understand within a
 - why Harsh is worth interviewing
 
 The experience should make the viewer want to click through, inspect the prototype, and ask how it was built.
-
