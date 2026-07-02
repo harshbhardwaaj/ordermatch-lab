@@ -29,16 +29,16 @@
 
 **Purpose**: Create the frontend foundation for the v0.x product surface.
 
-- [ ] T013 Scaffold the Next.js app with TypeScript, Tailwind CSS, App Router, and a clean project structure.
-- [ ] T014 Add shadcn/ui setup and install the first required UI primitives.
-- [ ] T015 Add lucide-react and define icon usage conventions for navigation, status, review actions, and CTA links.
-- [ ] T016 Create base layout files for app shell, metadata, global styles, and responsive constraints.
-- [ ] T017 Create initial folders for `components/narrative`, `components/product`, `components/candidate`, `components/onboarding`, `data`, `lib`, and `types`.
-- [ ] T018 Define TypeScript types for orders, line items, catalog items, match candidates, exceptions, eval metrics, onboarding setup, and candidate proof items.
-- [ ] T019 Define shared UI state types for loading, success, error, empty, partial, stale, simulated, and backend-backed states.
-- [ ] T020 Create formatter helpers for currency, dates, quantities, confidence, statuses, and units.
-- [ ] T021 Create confidence and readiness helper functions for high-confidence, review-needed, blocked, no-match, and ERP-ready states.
-- [ ] T022 Add initial app README notes for local development, v0/v1 version intent, and what must be true before the app is sent.
+- [x] T013 Scaffold the Next.js app with TypeScript, Tailwind CSS, App Router, and a clean project structure.
+- [x] T014 Add shadcn/ui setup and install the first required UI primitives.
+- [x] T015 Add lucide-react and define icon usage conventions for navigation, status, review actions, and CTA links.
+- [x] T016 Create base layout files for app shell, metadata, global styles, and responsive constraints.
+- [x] T017 Create initial folders for `components/narrative`, `components/product`, `components/candidate`, `components/onboarding`, `data`, `lib`, and `types`.
+- [x] T018 Define TypeScript types for orders, line items, catalog items, match candidates, exceptions, eval metrics, onboarding setup, and candidate proof items.
+- [x] T019 Define shared UI state types for loading, success, error, empty, partial, stale, simulated, and backend-backed states.
+- [x] T020 Create formatter helpers for currency, dates, quantities, confidence, statuses, and units.
+- [x] T021 Create confidence and readiness helper functions for high-confidence, review-needed, blocked, no-match, and ERP-ready states.
+- [x] T022 Add initial app README notes for local development, v0/v1 version intent, and what must be true before the app is sent.
 
 **Checkpoint**: Frontend app runs locally with empty shell, typed project foundations, and UI state concepts ready before screen work begins.
 
