@@ -48,16 +48,16 @@
 
 **Purpose**: Build the first realistic data layer that makes the frontend prototype feel grounded instead of fake.
 
-- [ ] T023 [P] Create `data/catalog.ts` with 30-80 industrial catalog items covering fasteners, bearings, seals, valves, sensors, cables, motors, and fittings.
-- [ ] T024 [P] Create `data/orders.ts` with 3-5 purchase orders or RFQs using realistic fields and customer profiles.
-- [ ] T025 [P] Create `data/evals.ts` with extraction, matching, human review, false confident match, exception category, and time-saved metrics.
-- [ ] T026 [P] Create `data/candidate.ts` using selected proof points from `docs/story-bank-harsh.md`.
-- [ ] T027 Add messy line-item cases: abbreviations, missing units, German/English variants, duplicate line, price mismatch, ambiguous SKU, no-match item, discontinued item, and low-confidence item.
-- [ ] T028 Add traceability reasons for match candidates, such as size, material, standard, unit, synonym, customer part number, and catalog attribute.
-- [ ] T029 Add ground-truth labels for extraction fields, expected SKU matches, expected blocked cases, and expected eval outcomes.
-- [ ] T030 Create an edge-case coverage matrix in `docs/data-research/edge-case-matrix.md` showing which sample orders cover each required uncertainty/failure case.
-- [ ] T031 Add comments or metadata that mark the dataset as grounded synthetic/sample data without weakening the product story.
-- [ ] T032 Validate that sample data can support every P1 user story in `docs/spec-kit/specification.md`.
+- [x] T023 [P] Create `data/catalog.ts` with 30-80 industrial catalog items covering fasteners, bearings, seals, valves, sensors, cables, motors, and fittings.
+- [x] T024 [P] Create `data/orders.ts` with 3-5 purchase orders or RFQs using realistic fields and customer profiles.
+- [x] T025 [P] Create `data/evals.ts` with extraction, matching, human review, false confident match, exception category, and time-saved metrics.
+- [x] T026 [P] Create `data/candidate.ts` using selected proof points from `docs/story-bank-harsh.md`.
+- [x] T027 Add messy line-item cases: abbreviations, missing units, German/English variants, duplicate line, price mismatch, ambiguous SKU, no-match item, discontinued item, and low-confidence item.
+- [x] T028 Add traceability reasons for match candidates, such as size, material, standard, unit, synonym, customer part number, and catalog attribute.
+- [x] T029 Add ground-truth labels for extraction fields, expected SKU matches, expected blocked cases, and expected eval outcomes.
+- [x] T030 Create an edge-case coverage matrix in `docs/data-research/edge-case-matrix.md` showing which sample orders cover each required uncertainty/failure case.
+- [x] T031 Add comments or metadata that mark the dataset as grounded synthetic/sample data without weakening the product story.
+- [x] T032 Validate that sample data can support every P1 user story in `docs/spec-kit/specification.md`.
 
 **Checkpoint**: Mock data is realistic, traceable, labeled, and broad enough to drive the narrative, product prototype, eval dashboard, onboarding/setup view, and candidate proof section.
 
