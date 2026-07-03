@@ -5,33 +5,43 @@
 
 These are structural wireframes, not visual designs. They define hierarchy, comparison surfaces, and where trust states belong.
 
-## UI/UX Pro Max Adjustments
+## Current Design-System Alignment
 
-The structure applies the Data-Dense Dashboard, Document Pipeline Dashboard, responsive table handling, row highlighting, toolbar/filter, and drill-down recommendations from `ui-ux-pro-max`.
+The structure now follows the approved blue-first light/dark visual system in `docs/design-system/visual-direction.md`.
+
+Key alignment points:
+
+- light mode is the default entry experience, with a small theme toggle available
+- dark mode uses the same semantic blue tokens
+- the opening screen stays focused on the Comena-specific problem and the `Show me` action
+- secondary pages use the left rail with a subtle sidebar toggle for labels
+- route changes use understated opacity-only view transitions
+- product surfaces still preserve dense operational workflow patterns, responsive table handling, row highlighting, toolbar/filter affordances, and drill-down paths
 
 ## Opening
 
 ```text
 +----------------------------------------------------------------------+
-| OrderMatch Lab                         Prototype  Evals  Proof  CTA |
+|                                                   [theme icon]       |
 +----------------------------------------------------------------------+
-| Built after studying Comena's order-entry workflow                   |
 |                                                                      |
-| AI order automation depends on matching, confidence, exceptions,     |
-| ERP readiness, and measurement after extraction.                     |
+|                  The email made you curious?                         |
+|                  Here's what I built for Comena.                     |
 |                                                                      |
-| [Enter prototype] [See engineering thesis]                           |
+|                         [Show me ->]                                 |
 |                                                                      |
-| Public workflow signal: inbox/email/PDF/RFQ -> extraction ->         |
-| SKU matching -> review -> ERP-ready order                            |
+|          A working prototype. 30 seconds. No signup.                 |
+|                                                                      |
+|                                      [floating sample order card]    |
 +----------------------------------------------------------------------+
 ```
 
 Rules:
 
-- Product signal appears above candidate biography.
+- Product signal appears before candidate biography.
 - Comena is named in opening copy.
-- Primary CTA reaches prototype in one action.
+- `Show me` reaches the prototype in one action.
+- The theme toggle is available without distracting from the headline.
 
 ## What I Learned
 
@@ -53,22 +63,22 @@ Rules:
 
 ```text
 +----------------------------------------------------------------------+
-| Prototype                                                            |
-+--------------+-------------------------------------------------------+
-| Queue        | Selected order: PO-1048                               |
-| Search/Filter| Customer, source, received time, readiness, blockers  |
-| Status tabs  | [Review exceptions] [View match reasons] [ERP check]  |
-| PO-1048      +-----------------------+-------------------------------+
-| RFQ-219      | Original context      | Extracted fields              |
-| PO-1050      | PDF/email text        | PO id, customer, delivery      |
-|              | fallback state        | missing/valid flags           |
-|              +-----------------------+-------------------------------+
-|              | Line normalization table                              |
-|              | original text | normalized attributes | qty | unit    |
-|              +-------------------------------------------------------+
-|              | SKU match candidates and exceptions                   |
-|              +-------------------------------------------------------+
-|              | ERP readiness checklist                               |
+| [rail] | Prototype                                                    |
+|        +-------------------------------------------------------------+
+| icon   | Selected order: PO-1048                                     |
+| icon   | Customer, source, received time, readiness, blockers        |
+| icon   | [Review exceptions] [View match reasons] [ERP check]        |
+| icon   +-----------------------+-------------------------------------+
+| icon   | Original context      | Extracted fields                    |
+| theme  | PDF/email text        | PO id, customer, delivery            |
+|        | fallback state        | missing/valid flags                 |
+|        +-----------------------+-------------------------------------+
+|        | Line normalization table                                    |
+|        | original text | normalized attributes | qty | unit          |
+|        +-------------------------------------------------------------+
+|        | SKU match candidates and exceptions                         |
+|        +-------------------------------------------------------------+
+|        | ERP readiness checklist                                     |
 +--------------+-------------------------------------------------------+
 ```
 
@@ -79,6 +89,7 @@ Rules:
 - Queue remains usable if one selected-order panel fails.
 - Queue has search/filter affordances before row data grows.
 - Dense tables can scroll horizontally on small screens.
+- Rail labels expand only from the subtle sidebar toggle; icons remain enough for quick repeat navigation.
 
 ## SKU Match Detail
 
@@ -180,14 +191,14 @@ Rules:
 - Candidate proof stays after product proof.
 - Each card maps to a Comena-relevant capability.
 
-## Final CTA
+## Contact / Next Step
 
 ```text
 +----------------------------------------------------------------------+
-| If this direction is useful, I would like to intern with Comena      |
-| and build the real version with your team.                           |
+| Next step                                                            |
+| Short, direct contact copy for a hiring reviewer.                    |
 |                                                                      |
-| [Book a quick call] [Email Harsh] [GitHub] [LinkedIn] [Resume]       |
+| [Call] [Email] [GitHub] [LinkedIn] [Resume/project links as ready]   |
 +----------------------------------------------------------------------+
 ```
 

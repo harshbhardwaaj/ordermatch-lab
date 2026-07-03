@@ -10,7 +10,11 @@ import {
   ListChecks,
   Loader2,
   Mail,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
+  Sun,
   XCircle,
 } from "lucide-react";
 
@@ -22,11 +26,15 @@ export const icons = {
   externalLink: ExternalLink,
   loading: Loader2,
   mail: Mail,
+  moon: Moon,
   orderReview: FileSearch,
+  panelClose: PanelLeftClose,
+  panelOpen: PanelLeftOpen,
   pending: CircleDashed,
   readiness: ListChecks,
   review: Clock3,
   success: CheckCircle2,
+  sun: Sun,
   trust: ShieldCheck,
 } as const;
 

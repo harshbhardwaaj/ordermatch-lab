@@ -1,117 +1,153 @@
 # Visual Direction
 
-**Date**: July 2, 2026
-**Purpose**: Define the visual bar before any frontend implementation begins.
+**Date**: July 2, 2026  
+**Updated**: July 3, 2026  
+**Purpose**: Define the approved visual bar for the Comena-facing build.
 
-## UI/UX Pro Max Inputs
+## Approved Direction
 
-This document uses `ui-ux-pro-max` recommendations from July 2, 2026.
+OrderMatch Lab now uses a blue-first SaaS visual system with both light and dark theme variants. The approved direction has pivoted back toward the brighter product direction, while keeping the cleaner storytelling structure and motion polish from the recent landing work.
 
-Primary design-system query:
+The current theme should feel:
 
-`B2B industrial AI order automation SaaS operational workbench ERP review dashboard trust dense`
+- direct
+- polished
+- restrained
+- clear rather than heavy
+- product-minded
+- friendly enough for a non-technical reviewer
+- serious enough for an operational workflow
+- distinctive enough to make the link memorable
 
-Adopted recommendations:
-
-- style: Data-Dense Dashboard
-- product pattern inputs: B2B Service, SaaS General, E-signature / Document Workflow, Analytics Dashboard
-- color direction: B2B Service professional navy and neutral gray, with SaaS trust-blue action color and functional status colors
-- typography: Plus Jakarta Sans as the first implementation candidate
-- effects: hover tooltips, row highlighting, smooth filter transitions, focused drill-down for charts and rows
-- UX validation: skeleton loading, helpful empty states, accessible error announcements, recovery paths, responsive table handling
-
-Rejected recommendation:
-
-- Product Review/Ratings Focused. The search returned this as the top pattern, but it does not fit OrderMatch Lab. The product is a workflow review workbench, not a consumer product review or ratings page.
+The app should still communicate operational trust. The blue theme is not a license for generic SaaS decoration. It should frame a clear product prototype, not hide it.
 
 ## Product Feel
 
-OrderMatch Lab should feel like a serious AI operations workbench built by someone who understands the workflow. The interface should read as modern, precise, and production-minded, with enough polish to send to a founder without explanation.
+OrderMatch Lab is a candidate pitch wrapped around a product prototype. The visual system should support both sides:
 
-Target qualities:
-
-- trustworthy
-- sharp
-- direct
-- data-aware
-- calm under uncertainty
-- operational rather than decorative
-- premium but not theatrical
+- The opening should feel like a confident entry point after an email.
+- The supporting pages should stay simple enough for a non-technical reviewer.
+- The product workbench should stay data-dense, inspectable, and explicit about uncertainty.
+- The full app should use the same blue token system across light and dark themes.
+- Light mode is the default entry experience for now, with dark mode available from the landing page.
 
 ## First-Viewport Impression
 
 The first screen must make three facts obvious:
 
-- this was built specifically for Comena
-- the product thesis is order automation from inbox to ERP
-- the primary action is to enter the prototype
+- this was built for Comena
+- there is a working prototype to inspect
+- the next action is to click `Show me`
 
-Avoid a generic hero, resume intro, or vague AI tagline. The first viewport should use product evidence, workflow language, and a clear CTA.
+Avoid a generic hero, resume intro, or vague AI tagline. The first viewport can use motion, glow, and a small animated product hint, but the message should stay short.
+
+Current approved headline:
+
+> The email made you curious?
+> Here's what I built for Comena.
+
+`Comena` receives the blue accent treatment. The rest of both lines stays in the active theme's base text color.
 
 ## Color Direction
 
-Use a restrained operational palette based on the B2B Service and SaaS General `ui-ux-pro-max` results:
+Use the blue SaaS palette currently implemented in the app.
 
-- background: `#F8FAFC` or near-white
-- primary text: `#020617`
-- secondary text: `#64748B`
-- surface: `#FFFFFF`
-- border: `#E2E8F0`
-- primary action: `#0369A1` or `#2563EB`
-- success/ready: `#16A34A`
-- review/attention: `#D97706`
-- blocked/error: `#DC2626`
-- simulated/sample: blue-gray or slate
-- traceability/eval: muted blue or cyan only as a light accent
+Light theme:
+
+- app background: `#f3f8ff`
+- soft background: `#eaf4ff`
+- primary surface: `#ffffff`
+- secondary surface: `#f7fbff`
+- selected surface: `#eaf2ff`
+- subtle border: `#d9e8f7`
+- strong border: `#b8d4f2`
+- primary text: `#0f172a`
+- secondary text: `#64748b`
+- muted text: `#94a3b8`
+- primary accent: `#2563eb`
+- accent hover: `#1d4ed8`
+- soft accent: `#dbeafe`
+- softer accent: `#eff6ff`
+- accent text: `#ffffff`
+- success/ready: `#16a34a`
+
+Dark theme:
+
+- app background: `#07111f`
+- soft background: `#0b1830`
+- primary surface: `#101b2d`
+- secondary surface: `#14233a`
+- selected surface: `#18345d`
+- subtle border: `#203654`
+- strong border: `#315077`
+- primary text: `#f8fbff`
+- secondary text: `#b8c7dc`
+- muted text: `#8295b0`
+- primary accent: `#60a5fa`
+- accent hover: `#93c5fd`
+- soft accent: `#1d4e89`
+- softer accent: `#102947`
+- accent text: `#06101f`
+- success/ready: `#22c55e`
 
 Rules:
 
-- Do not let the app become a purple gradient SaaS page.
-- Do not use one dominant hue family across the whole experience.
+- Keep the whole app on this blue system for now.
+- Support both light and dark themes using the same semantic tokens.
 - Keep status colors semantically stable.
 - Use color plus text/icon, never color alone.
-- Reserve strong color for workflow states, not decoration.
-- Do not default to the dark RPA/financial dashboard palette from the search results. Dark mode can come later, but the first Comena-facing version should default to a bright, inspectable workbench.
+- Reserve strong blue for action, focus, active state, and key emphasis.
+- Avoid introducing a second decorative accent unless it has a semantic job.
+- Do not let the app become a purple gradient SaaS page.
+- Do not use one dominant hue family without contrast. The palette needs blue, neutral surfaces, clear text, and semantic state colors.
 
 ## Typography
 
-Use Plus Jakarta Sans as the first implementation candidate, matching the `ui-ux-pro-max` SaaS dashboard typography recommendation.
+Use Plus Jakarta Sans as the implementation font.
 
-- 800 or 700 for opening and major section headers only
+- 800 or 700 for the opening and major section headers only
 - 600 for panel titles, buttons, tabs, and table headers
 - 400 or 500 for body text and dense operational labels
-- large type only for opening and major section headers
-- dense but readable table text in workflow areas
+- large type only for the opening and major section headers
+- compact headings inside dashboards, review panels, and cards
 - concise labels for statuses and fields
 - tabular numbers for quantities, confidence, prices, and metrics if available
 - no negative letter spacing
 - no viewport-scaled font sizes
 
-The product UI should feel efficient. Headings inside dashboards, review panels, and cards should stay compact.
+The narrative pages may use larger type than the future workbench. The product UI should feel efficient.
 
 ## Layout Principles
 
-Desktop-first:
+Entry and narrative pages:
 
-- likely reviewer is on a laptop or desktop
-- use two-column review layouts where they aid comparison
-- use data-dense dashboard structure for the product workbench
+- center the first-view message
+- keep navigation hidden on the opening screen
+- use the left rail after the entry screen, with a subtle sidebar toggle for labels
+- keep route labels simple: Start, What I built, How it works, Why me, Next step
+- keep supporting pages short, plain, and easy for non-technical reviewers
+
+Product workbench:
+
+- desktop-first
+- use data-dense layouts where comparison matters
 - keep original text and normalized fields visible near each other
 - make tables scannable
 - put ERP readiness and exceptions near decision controls
 - keep toolbar, filters, and bulk actions predictable
+- use the approved blue light/dark tokens, with enough contrast for dense inspection
 
 Responsive enough:
 
 - mobile should never feel broken
 - product tables can become stacked review rows
 - wide tables can use horizontal scroll when card conversion would reduce comparison quality
-- primary CTA must remain visible
+- the primary next action must remain visible
 - avoid hiding critical status behind menus
 
 ## Density
 
-The workflow should be information-rich but calm, following the Data-Dense Dashboard recommendation:
+The workflow should be information-rich but calm:
 
 - compact cards for repeated items only
 - no cards inside cards
@@ -124,16 +160,26 @@ The workflow should be information-rich but calm, following the Data-Dense Dashb
 
 ## Motion
 
-Use motion as feedback, not spectacle:
+Motion is part of the approved product theme.
 
-- short transitions for section changes, selected rows, and state updates
+Allowed on the opening and narrative shell:
+
+- pulsing button halo
+- subtle hero glow or ambient motion
+- floating sample order card
+- small text or status swaps
+- subtle sidebar-toggle navigation rail expansion
+- opacity-only route crossfade using native View Transitions
+
+Rules for product screens:
+
+- use motion as feedback, not spectacle
+- short transitions for selected rows and state updates
 - hover and focus states should transition within roughly 150-300ms
 - subtle progress for simulated import/eval flows
 - row highlighting on hover is useful for dense tables
-- chart or row drill-down can use a small focused transition
-- no parallax, glow loops, or animated hero effects
 - no fake endless loading
-- respect reduced-motion preferences when implementation begins
+- respect reduced-motion preferences
 
 ## Visual Proof Points
 
@@ -149,14 +195,53 @@ The interface should visibly support the engineering thesis:
 - onboarding/setup steps
 - partial and degraded states
 
+## Navigation
+
+The navigation rail should stay quiet:
+
+- slim product sidebar by default
+- wider label sidebar after an intentional sidebar-toggle click
+- one 1px border
+- no glow, shadow, or backdrop blur
+- no numbered badges
+- circular or softly rounded icon targets inspired by modern SaaS sidebars
+- active route shown with a subtle selected surface and a thin blue edge marker
+- minimal blue logo mark in the top slot
+- quiet ChatGPT/Claude-style sidebar toggle inside the icon stack
+- collapse on outside click or Escape
+- expanded labels push the main content over instead of covering it
+
+## Step Lists
+
+Plain-English process lists should use a single-column timeline:
+
+- thin vertical line on the left
+- small node per item
+- step label plus short plain-language explanation
+- no alternating layout
+- no boxed card per list item
+
+## Logo Direction
+
+The current mark is an inline SVG built around the core mechanic: loose inputs resolve into a matched, reviewed decision. It should remain simple enough to read at the collapsed rail size and relaxed enough to feel like a creative prototype, not a generic enterprise monogram.
+
+Logo rules:
+
+- use blue as the primary color
+- work on both light and dark backgrounds
+- avoid generic two-letter monograms
+- prefer a circle/seal silhouette with a simple internal matching motif
+- keep it SVG-native so it scales cleanly
+- preserve clarity at 32-40px
+
 ## Anti-Patterns
 
 Do not use:
 
 - generic AI chatbot framing
 - oversized marketing sections after the opening
-- vague "agent magic" visuals
-- purple/blue gradient overload
+- vague agent magic visuals
+- purple gradient overload
 - decorative blobs, bokeh, or abstract orbs
 - fake complexity that does not clarify workflow
 - resume-first content hierarchy

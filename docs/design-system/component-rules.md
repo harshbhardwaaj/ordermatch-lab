@@ -14,10 +14,15 @@
 - Do not nest cards inside cards.
 - Do not expose raw backend, model, provider, or database errors.
 
-## UI/UX Pro Max Priorities
+## Current Implementation Priorities
 
-Adopt these `ui-ux-pro-max` recommendations during implementation:
+Adopt these current design-system priorities during implementation:
 
+- Blue-first light/dark theme tokens from `visual-direction.md`.
+- Light mode default with a persistent theme toggle available on every page.
+- Subtle ChatGPT/Claude-style sidebar toggle for expanding rail labels.
+- Native opacity-only route transitions where supported, with reduced-motion support.
+- Minimal inline SVG logo mark in the rail's top slot.
 - Data-Dense Dashboard for the workbench surface.
 - Document Pipeline Dashboard patterns for order/RFQ processing.
 - Helpful empty states with a message and clear action.
@@ -124,18 +129,28 @@ Rules:
 
 ## Sidebars And Navigation
 
-Use a predictable top nav or side anchor navigation:
+Use the current left rail navigation after the opening screen:
 
-- Why this exists
-- Prototype
-- Evals
-- Setup
-- Candidate proof
-- CTA
+- subtle sidebar toggle
+- Start
+- What I built
+- How it works
+- Why me
+- Next step
+- theme toggle at the bottom
 
-The reviewer must reach the product prototype from the first screen in one action.
+The reviewer must reach the product prototype from the first screen in one action via `Show me`.
 
 Navigation should support both guided reading and operational jumping. Keep section labels short and stable.
+
+Rail behavior:
+
+- collapsed state shows icons only
+- expanded state shows icon plus label
+- expansion uses the sidebar toggle, not hover
+- outside click and `Esc` collapse the rail
+- expanded rail pushes content over instead of covering it
+- initial open/closed preference is applied before paint to avoid layout flash
 
 ## Review Panels
 
@@ -285,9 +300,9 @@ Candidate content is secondary. Each proof card needs:
 - no course grades
 - no unsupported claims
 
-## CTA Components
+## Contact / Next-Step Components
 
-CTA should support:
+The final contact page should support:
 
 - calendar link once chosen
 - direct email fallback
