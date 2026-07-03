@@ -15,10 +15,13 @@ Every screen or independent section must define:
 
 If one section fails, the rest of the page should remain usable.
 
-## UI/UX Pro Max State Rules
+## Current State Rules
 
-The state plan uses the following `ui-ux-pro-max` guidance:
+The state plan uses the current blue-first light/dark design system plus the UX product playbook:
 
+- light mode default, dark mode available through the persistent theme toggle
+- shared rail navigation on secondary pages, expanded by a subtle sidebar toggle
+- native opacity-only route transitions with reduced-motion support
 - loading: skeletons for major sections, inline spinners for contained actions
 - empty: helpful message plus clear next action
 - error: message near the affected area, announced accessibly when implemented
@@ -30,7 +33,7 @@ The state plan uses the following `ui-ux-pro-max` guidance:
 
 | Section | Goal | Proof point | Primary action | Loading | Success | Error | Empty | Partial |
 |---|---|---|---|---|---|---|---|---|
-| Opening | Explain why this exists for Comena. | Candidate story drives product. | Enter prototype. | Skeleton for first viewport if assets/data load later. | Reviewer understands Comena-specific project. | Supporting link unavailable with fallback copy. | No supporting proof loaded, still show core pitch. | CTA works even if proof badges fail. |
+| Opening | Explain why this exists for Comena. | Candidate story drives product. | Show me. | Skeleton for first viewport if assets/data load later. | Reviewer understands Comena-specific project. | Supporting link unavailable with fallback copy. | No supporting proof loaded, still show core pitch. | Prototype link works even if proof badges fail. |
 | What I learned | Summarize public workflow understanding. | Harsh studied inbox-to-ERP automation and article matching. | Continue to workflow. | Small skeleton rows. | Research points render. | Source preview unavailable, keep summarized insight. | No source cards, show compact narrative. | Some research cards absent, core workflow remains. |
 | Order queue | Show incoming POs/RFQs and operational triage. | Order automation starts with messy work intake. | Open primary sample order. | Table skeleton. | Orders visible with status/confidence/exceptions. | Row or queue refresh failure with retry near table. | No orders waiting, offer sample import. | Stale queue visible with warning. |
 | Original context | Preserve source order text/document. | Extraction is traceable to original customer wording. | Inspect extracted fields. | Document preview skeleton. | Preview/text visible. | Preview failed, show extracted text fallback. | No source document, explain unavailable sample. | Preview missing but fields remain usable. |
@@ -43,7 +46,7 @@ The state plan uses the following `ui-ux-pro-max` guidance:
 | Evals | Show how quality would be measured. | Production AI needs measurement. | Run sample eval. | Metric skeleton or progress steps. | Metrics complete. | Eval failed with retry and preserved last results. | No eval runs, offer sample benchmark. | Some charts fail, metric cards remain. |
 | Onboarding/setup | Show repeatability of new customer setup. | Customer onboarding is part of the hard problem. | View setup checklist. | Step skeleton. | Catalog, mapping, rules, baseline, readiness steps visible. | Setup import failed with recovery. | No setup yet, offer sample setup. | Some setup steps complete, others blocked. |
 | Candidate proof | Connect Harsh's relevant work to Comena needs. | Product proof is backed by selective candidate evidence. | Open relevant project link. | Card skeleton. | Proof cards render. | Link missing or unavailable with fallback. | No approved links, keep section compact. | Some links missing, proof copy remains. |
-| Final CTA | Make the next step obvious. | The project asks for an internship conversation. | Book call or email. | Link check spinner only if needed. | Calendar/email/project links available. | Calendar unavailable, show email fallback. | No calendar selected, use email. | Some links unavailable, CTA still works. |
+| Contact / Next step | Make the next step obvious. | The project asks for an internship conversation. | Call or email. | Link check spinner only if needed. | Contact/project links available. | Calendar unavailable, show email fallback. | No calendar selected, use email. | Some links unavailable, contact path still works. |
 
 ## P1 Flow
 

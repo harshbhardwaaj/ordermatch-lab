@@ -31,9 +31,9 @@ If later research changes Comena positioning, stack, customer segment, or data a
 
 ## T012 Constitution Preservation
 
-T005-T008 were rechecked with `ui-ux-pro-max` after the initial Phase 1 pass.
+T005-T008 were rechecked after the initial Phase 1 pass and later reconciled with the approved visual direction now implemented in the app.
 
-Searches run:
+Earlier design research covered:
 
 - `--design-system` for "B2B industrial AI order automation SaaS operational workbench ERP review dashboard trust dense"
 - `--domain product` for enterprise SaaS operational dashboard workflow patterns
@@ -45,7 +45,11 @@ Adopted:
 
 - Data-Dense Dashboard style
 - B2B Service, SaaS General, Document Workflow, and Analytics Dashboard patterns
-- light professional navy/blue/neutral palette with green, amber, and red state colors
+- blue-first light/dark palette with semantic success, warning, and error colors
+- light mode as the default entry experience, with dark mode available via persistent toggle
+- subtle sidebar-toggle rail navigation after the opening screen
+- opacity-only route transitions and reduced-motion support
+- minimal inline SVG logo mark based on matching/resolution
 - Plus Jakarta Sans as first typography candidate
 - skeleton loading, helpful empty states, accessible error announcements, recovery paths, responsive table handling, hover states, filters, and drill-down
 
@@ -55,12 +59,12 @@ Rejected:
 
 | Principle | Status | Evidence in Phase 1 docs |
 |---|---|---|
-| Candidate Story Drives The Product | Preserved | `docs/research/comena-brief.md`, `docs/design-system/copy-principles.md`, and `docs/design-system/wireframes.md` keep Comena opening and CTA explicit. |
+| Candidate Story Drives The Product | Preserved | `docs/research/comena-brief.md`, `docs/design-system/copy-principles.md`, and `docs/design-system/wireframes.md` keep the Comena opening and next step explicit. |
 | Product Proof Over Claims | Preserved | `docs/design-system/screen-map.md` and `docs/design-system/component-rules.md` put workflow proof, match reasons, exceptions, readiness, and evals before candidate proof. |
 | Trust Before Flash | Preserved | `docs/design-system/visual-direction.md` rejects generic AI visuals and defines restrained operational SaaS direction. |
 | UX Must Cover Reality | Preserved | `docs/design-system/screen-map.md` and `docs/qa/reviewer-test-plan.md` define loading, success, error, empty, and partial states by section. |
 | Frontend First, Functionality Layered In | Preserved | `docs/design-system/constitution-check.md` keeps v0.x frontend-first while preserving v1.0 backend-backed scope. |
-| Comena-Specific, Later Adaptable | Preserved | `docs/research/comena-brief.md` and `docs/design-system/copy-principles.md` specify Comena in opening/CTA and reusable product language in the prototype. |
+| Comena-Specific, Later Adaptable | Preserved | `docs/research/comena-brief.md` and `docs/design-system/copy-principles.md` specify Comena in the opening/contact flow and reusable product language in the prototype. |
 | Engineering Thesis Must Stay Visible | Preserved | `docs/data-research/grounding-notes.md`, `docs/design-system/component-rules.md`, and `docs/design-system/screen-map.md` require extraction, normalization, SKU matching, confidence, exceptions, ERP readiness, evals, onboarding repeatability, traceability, and graceful degradation. |
 
 ## Phase 1 Checkpoint
