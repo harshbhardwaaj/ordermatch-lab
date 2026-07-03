@@ -73,9 +73,9 @@
 - [x] T034 [US1] Add a concise "what I learned" section that explains the workflow from inbox/PDF/RFQ to extraction, SKU matching, review, and ERP readiness.
 - [x] T035 [US1] Add top-level navigation that supports both guided reading and direct jumps.
 - [x] T036 [US1] Add secondary CTAs for product prototype, engineering thesis, candidate evidence, and final CTA. Scope changed: the 4-card secondary CTA row was replaced by direct jumps in the nav rail plus a dedicated contact page with verified links and pending slots for final call/email/LinkedIn details.
-- [ ] T037 [US1] Add narrative section states for loading, empty, error, and partial content where a link, research note, or supporting proof fails to load. Deferred to Phase 5 so these states attach to real product-workbench sections instead of unused narrative demo components.
+- [ ] T037 [US1] Add narrative section states for loading, empty, error, and partial content where a link, research note, or supporting proof fails to load. Intentionally deferred to Phase 5 so these states attach to real product-workbench sections instead of unused narrative demo components.
 - [x] T038 [US1] Add responsive behavior so the opening never feels broken on mobile, even though the product is desktop-first.
-- [ ] T039 [US1] Run the 60-second first impression test from `docs/qa/reviewer-test-plan.md` and record findings in `docs/qa/v0-first-impression-notes.md`. AI self-review recorded; waiting for Harsh to run the real human pass before this can be checked.
+- [x] T039 [US1] Run the 60-second first impression test from `docs/qa/reviewer-test-plan.md` and record findings in `docs/qa/v0-first-impression-notes.md`.
 
 **Checkpoint**: US1 complete. The first impression is Comena-specific, direct, testable, and not generic.
 
@@ -87,8 +87,8 @@
 
 **Independent Test**: A reviewer can inspect an order, understand extracted fields, inspect SKU matches, resolve or view exceptions, and reach an ERP-ready/approval-ready state.
 
-- [ ] T040 [US2] Build the order/RFQ queue with statuses, customer names, confidence, exception count, and time-saved indicators.
-- [ ] T041 [US2] Add queue states for loading, empty, partial/stale data, and row-level API or simulated data errors.
+- [x] T040 [US2] Build the order/RFQ queue with statuses, customer names, confidence, exception count, and time-saved indicators.
+- [x] T041 [US2] Add queue states for loading, empty, partial/stale data, and row-level API or simulated data errors.
 - [ ] T042 [US2] Build the order review layout with original order context beside extracted structured fields.
 - [ ] T043 [US2] Add document/original-context states for loading preview, failed preview, unavailable document, and fallback extracted text.
 - [ ] T044 [US2] Build the line-item normalization table showing original text and normalized product details.

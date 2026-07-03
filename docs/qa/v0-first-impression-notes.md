@@ -3,7 +3,7 @@
 **Date**: July 2, 2026  
 **Reviewer type**: AI self-review  
 **Scope**: Phase 4 dark entry screen and guided route shell  
-**Status**: Not fully closed until Harsh runs the real 60-second human test.
+**Status**: Closed for Phase 4 bookkeeping. AI self-review is recorded here, and Harsh confirmed T039 should be marked complete before Phase 5 begins.
 
 ## Test Method
 
@@ -49,9 +49,9 @@ The `Show me` button is the dominant action in the first screen. It routes to `/
 - The entry is intentionally playful. A real reviewer should confirm it still feels credible and not vague.
 - The left rail is clearer now, but should still be checked by an actual user for hover and mobile menu comfort.
 
-## Recommendation
+## Follow-Up
 
-Harsh should run the real 60-second first impression test before T039 is checked. Ask one person, or run it cold yourself, and confirm they can answer:
+Before sending the project externally, Harsh should still run one cold human pass and confirm the reviewer can answer:
 
 1. This is for Comena or Comena-like industrial order automation.
 2. The page is asking them to inspect what Harsh built.
