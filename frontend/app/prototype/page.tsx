@@ -1,5 +1,5 @@
-import { OrderQueue } from "@/components/product/order-queue";
+import { PrototypeOrientation } from "@/components/product/prototype-orientation";
 
 export default function PrototypePage() {
-  return <OrderQueue />;
+  return <PrototypeOrientation />;
 }

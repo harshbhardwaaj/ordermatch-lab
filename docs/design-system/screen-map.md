@@ -35,13 +35,13 @@ The state plan uses the current blue-first light/dark design system plus the UX 
 |---|---|---|---|---|---|---|---|---|
 | Opening | Explain why this exists for Comena. | Candidate story drives product. | Show me. | Skeleton for first viewport if assets/data load later. | Reviewer understands Comena-specific project. | Supporting link unavailable with fallback copy. | No supporting proof loaded, still show core pitch. | Prototype link works even if proof badges fail. |
 | What I learned | Summarize public workflow understanding. | Harsh studied inbox-to-ERP automation and article matching. | Continue to workflow. | Small skeleton rows. | Research points render. | Source preview unavailable, keep summarized insight. | No source cards, show compact narrative. | Some research cards absent, core workflow remains. |
-| Order queue | Show incoming POs/RFQs and operational triage. | Order automation starts with messy work intake. | Open primary sample order. | Table skeleton. | Orders visible with status/confidence/exceptions. | Row or queue refresh failure with retry near table. | No orders waiting, offer sample import. | Stale queue visible with warning. |
-| Original context | Preserve source order text/document. | Extraction is traceable to original customer wording. | Inspect extracted fields. | Document preview skeleton. | Preview/text visible. | Preview failed, show extracted text fallback. | No source document, explain unavailable sample. | Preview missing but fields remain usable. |
-| Extracted fields | Show structured order header and fields. | ERP readiness depends on field completeness. | Review field blockers. | Field skeleton. | Required fields visible. | Field extraction unavailable with retry. | No fields extracted, suggest sample import. | Some fields missing with inline flags. |
-| Line normalization | Show original line text beside normalized interpretation. | Normalization is separate from overwriting customer text. | Inspect match candidates. | Table skeleton. | Lines normalized with original text preserved. | Line parsing failed for row, rest remain. | No lines found, show extraction issue. | Some rows parsed, some flagged. |
-| SKU matching | Show suggested SKU, alternates, confidence, and reasons. | Matching is ranking plus traceability. | Accept/reject/review match. | Candidate skeleton or inline spinner. | Suggested and alternate matches visible. | Matching service unavailable, keep lines visible. | No match found, route exception. | Some lines matched, some unavailable. |
-| Exception review | Make uncertainty actionable. | Low confidence becomes routed work. | Resolve exception. | Exception list skeleton. | Exceptions grouped with blockers. | Save/resolve failure shown inline. | No unresolved exceptions, show ready-state achievement. | Some exception groups fail to load. |
-| ERP readiness | Show whether order can safely move downstream. | Approval is validation after extraction. | Mark ERP-ready when allowed. | Checklist skeleton. | Ready or blockers visible. | Validation unavailable, block final action. | No order selected. | Checklist visible with stale/partial warning. |
+| Problem orientation | State the messy-order-email problem in plain words. | The problem is real and specific, not abstract AI framing. | See how I'd solve this for Comena. | n/a, static content. | Reviewer understands the pain point before seeing the workflow. | n/a. | n/a. | n/a. |
+| Workflow diagram | Show the shape of the solution before the reviewer touches it. | Most orders never need a person; the fork is the whole idea. | Experience it yourself. | n/a, static diagram, live-measured connectors. | Order comes in, AI-assisted review, CLEAR/NEEDS REVIEW fork, AFTER FIX loop all visible. | n/a. | n/a. | n/a. |
+| Order intake | Let the reviewer pick a real order to follow, or bring their own. | The system reduces to one order, one story, at a time. | Review this order. | n/a, static sample cards. | Sample orders and own-order panel render; already-sent orders marked and de-emphasized. | n/a, own-order paste/upload has no failure path in the prototype. | n/a, sample data is always present. | Own-order panel remains usable even if clipboard access is blocked. |
+| Processing | Watch the order get read and matched live. | Matching is an inspectable process, not a black box. | Continue to order summary. | The staggered per-line reveal is itself the loading state. | All lines revealed, matched or flagged, banner reflects the outcome. | n/a, purely client-side simulation. | n/a, every sample order has at least one line. | A flagged line can be deferred and revisited without blocking the rest of the reveal. |
+| Summary | Show the fully resolved order before it is sent. | Every match has a reason, not just a score. | Send to ERP. | n/a, resolved instantly from prior screen state. | Order fully resolved and ready to send. | Any line still needing a decision blocks the send action with a clear count. | n/a. | The traceability panel opens per line without disturbing the rest of the list. |
+| Sent confirmation | Make a completed send feel finished, not just logged. | The order genuinely left the review queue. | Handle what else needs you, or start a new order. | Brief "Sending to the ERP" button state. | Centered animated confirmation with the order reference. | n/a, the simulated action cannot fail in this prototype. | n/a. | n/a. |
+| Waiting queue | Prove the system handles more than one order at a time. | Background orders keep moving while the reviewer works one at a time. | Review this order. | n/a, static per session. | Still-open background orders listed with their flagged-item counts. | n/a. | Nothing waiting, reviewer is caught up. | n/a. |
 | Engineering thesis | Explain production problems without a long essay. | Extraction, normalization, matching, confidence, evals, onboarding, traceability, graceful degradation. | Jump to evals or setup. | Section skeleton. | Problem cards tied to prototype examples. | One example unavailable. | No examples, show thesis summary. | Some examples visible. |
 | Evals | Show how quality would be measured. | Production AI needs measurement. | Run sample eval. | Metric skeleton or progress steps. | Metrics complete. | Eval failed with retry and preserved last results. | No eval runs, offer sample benchmark. | Some charts fail, metric cards remain. |
 | Onboarding/setup | Show repeatability of new customer setup. | Customer onboarding is part of the hard problem. | View setup checklist. | Step skeleton. | Catalog, mapping, rules, baseline, readiness steps visible. | Setup import failed with recovery. | No setup yet, offer sample setup. | Some setup steps complete, others blocked. |
@@ -54,15 +54,16 @@ The P1 walkthrough should work in this order:
 
 1. Opening.
 2. What I learned.
-3. Order queue.
-4. Order review.
-5. Line normalization.
-6. SKU matching.
-7. Exception review.
-8. ERP readiness.
-9. Evals.
+3. Problem orientation.
+4. Workflow diagram.
+5. Order intake.
+6. Processing.
+7. Summary.
+8. Sent confirmation.
+9. Waiting queue.
+10. Evals.
 
-The reviewer should also be able to skip directly from opening to prototype.
+The reviewer should also be able to skip directly from opening to the prototype's problem orientation.
 
 ## State Coverage Rules
 

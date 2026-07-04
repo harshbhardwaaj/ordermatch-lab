@@ -16,7 +16,7 @@ Key alignment points:
 - the opening screen stays focused on the Comena-specific problem and the `Show me` action
 - secondary pages use the left rail with a subtle sidebar toggle for labels
 - route changes use understated opacity-only view transitions
-- product surfaces still preserve dense operational workflow patterns, responsive table handling, row highlighting, toolbar/filter affordances, and drill-down paths
+- the product surface is a guided, one-order-at-a-time sequence (intake, processing, summary, sent, waiting queue), not a dense browsable dashboard
 
 ## Opening
 
@@ -59,79 +59,114 @@ Rules:
 - Keep concise.
 - Each point must connect to a product screen later.
 
-## Product Prototype Shell
+## Order Intake
 
 ```text
 +----------------------------------------------------------------------+
-| [rail] | Prototype                                                    |
-|        +-------------------------------------------------------------+
-| icon   | Selected order: PO-1048                                     |
-| icon   | Customer, source, received time, readiness, blockers        |
-| icon   | [Review exceptions] [View match reasons] [ERP check]        |
-| icon   +-----------------------+-------------------------------------+
-| icon   | Original context      | Extracted fields                    |
-| theme  | PDF/email text        | PO id, customer, delivery            |
-|        | fallback state        | missing/valid flags                 |
-|        +-----------------------+-------------------------------------+
-|        | Line normalization table                                    |
-|        | original text | normalized attributes | qty | unit          |
-|        +-------------------------------------------------------------+
-|        | SKU match candidates and exceptions                         |
-|        +-------------------------------------------------------------+
-|        | ERP readiness checklist                                     |
+| [rail] | Pick an order to review.                                     |
+| icon   | Choose one of the sample orders below, or bring your own.    |
+| icon   +----------------------------+----------------------------+   |
+| icon   | Vogt Hydraulik GmbH        | MainSpindel Services AG    |   |
+| icon   | PO-2026-0142 . PDF         | RFQ-778 . Email             |   |
+| theme  | [Review this order]        | [Sent] [View sent order]   |   |
+|        +----------------------------+----------------------------+   |
+|        | [Use your own order]                                       |
+|        | Paste text | Upload a file | Connect email                 |
 +--------------+-------------------------------------------------------+
 ```
 
 Rules:
 
-- Original and normalized views stay adjacent.
-- Readiness is visible near decision controls.
-- Queue remains usable if one selected-order panel fails.
-- Queue has search/filter affordances before row data grows.
-- Dense tables can scroll horizontally on small screens.
-- Rail labels expand only from the subtle sidebar toggle; icons remain enough for quick repeat navigation.
+- Sample orders use real synthetic data, not placeholder rows.
+- An already-sent sample order shows a sent badge and switches its action to a secondary "view sent order" link.
+- The own-order panel's "connect email" tab is intentionally inert, styled the same as the working tabs, with no disclaimer.
+- Own-order matching runs against the same sample catalog; the panel says so in one line, no gate.
 
-## SKU Match Detail
+## Processing
 
 ```text
 +----------------------------------------------------------------------+
-| Line 03: "hex bolt m8x40 inox qty 500"                              |
-+------------------------------------+---------------------------------+
-| Suggested SKU                      | Why this matched                |
-| SKU-FST-M8-40-A2                   | size: M8x40                     |
-| High confidence                    | material: inox -> A2 stainless  |
-| [Accept] [Review alternates]       | standard: DIN/ISO family        |
-+------------------------------------+---------------------------------+
-| Alternates: SKU-FST-M8-35-A2, SKU-FST-M8-40-ZN                      |
+| [rail] | Reading Vogt Hydraulik GmbH's order          | Also          |
+| icon   | 4 of 4 checked  [======================]     | processing    |
+| icon   | Customer / Deliver by / Deliver to            | right now     |
+| icon   +------------------------------------------------+--------------+
+| theme  | o Hex bolt M8x40 A2 stainless        [Matched] | MainSpindel  |
+|        | o Deep groove ball bearing 6205-2RS  [Needs a  | . matching   |
+|        |   Which did you mean?                 decision]| NordEifel    |
+|        |   [ ] candidate A   [ ] candidate B             | . 2 flagged  |
+|        |   [type answer] [Use this answer] [Decide later]|              |
+|        | o O-ring 10x2 FKM                    [Matched] |              |
++--------------+-------------------------------------------------------+
+```
+
+Rules:
+
+- The reveal is a timeline/log, not a boxed form; each line appends as it is checked.
+- A flagged line's picker sits inline, capped at three ranked candidates plus one combined "type it / decide later" slot.
+- Resolving is non-blocking: later lines keep revealing while an earlier flagged line waits.
+- The side rail is ambient only, ticking on its own timers, never competing for attention.
+
+## Summary
+
+```text
++----------------------------------------------------------------------+
+| [rail] | Vogt Hydraulik GmbH's order is ready for the ERP.            |
+| icon   | Customer / Deliver by / Deliver to                          |
+| icon   +----------------------------------------------------------- +
+| icon   | Hex bolt M8x40 A2 stainless      [Matched]   Why this matched|
+| theme  | Deep groove ball bearing 6205-2RS [Confirmed] Why this matched|
+|        | O-ring 10x2 FKM                  [Matched]   Why this matched|
+|        +--------------------------------------------------------------+
+|        |                        [Send to ERP]                        |
++--------------+-------------------------------------------------------+
+```
+
+Rules:
+
+- This is the review form; it shows exactly what will be sent, nothing hidden.
+- "Why this matched" expands per line into real proof items (size, material, standard, and so on), not a bare confidence number.
+- Any line still needing a decision reopens the resolve picker in place and blocks "Send to ERP" until clear.
+
+## Sent Confirmation
+
+```text
++----------------------------------------------------------------------+
+|                                                                        |
+|                              [ check ]                                |
+|                                                                        |
+|                Vogt Hydraulik GmbH's order has been sent.             |
+|                     Sent to the ERP as PO-2026-0142.                  |
+|                                                                        |
+|        [Handle what else needs you]   [Start a new order]             |
+|                                                                        |
 +----------------------------------------------------------------------+
 ```
 
 Rules:
 
-- Do not show a confidence number without reason.
-- Alternates make ambiguity visible.
-- Accept/reject actions need success and failure feedback.
+- Line items are hidden entirely; this moment is a confirmation, not another data screen.
+- The check icon animates in; the moment should read as an event, not a static banner.
+- Two real destinations follow: the background queue, or a fresh order.
 
-## Exception Review
+## Waiting Queue
 
 ```text
 +----------------------------------------------------------------------+
-| Exceptions                                                           |
-+----------------------------------------------------------------------+
-| Filter: All | Blocking | Review | Resolved       Bulk: safe actions  |
-+--------------+--------------+--------------+------------------------+
-| Blocking     | Review       | Resolved     | ERP readiness impact   |
-+--------------+--------------+--------------+------------------------+
-| Missing unit | Price diff   | Duplicate    | 2 blockers remain      |
-| No match     | Ambiguous    |              | [View blockers]        |
-+--------------+--------------+--------------+------------------------+
+| [rail] | While you were reviewing, a few more came in.                |
+| icon   +----------------------------+----------------------------+   |
+| icon   | MainSpindel Services AG    | NordEifel Robotics KG      |   |
+| icon   | 3 items need a decision    | 2 items need a decision    |   |
+| theme  | [Review this order]        | [Review this order]        |   |
+|        +----------------------------+----------------------------+   |
+|        | [Start a new order]                                        |
++--------------+-------------------------------------------------------+
 ```
 
 Rules:
 
-- Exceptions are categories with recovery actions.
-- Zero exceptions should feel like readiness, not emptiness.
-- Row-level failure appears next to the affected exception.
+- Only orders that actually have something flagged appear here; anything already sent drops off.
+- Clicking an order goes straight to its summary screen, not back through a live reveal, since it already finished in the background.
+- Empty state reads "Nothing waiting on you right now. You're all caught up," not a generic empty-list message.
 
 ## Evals
 
