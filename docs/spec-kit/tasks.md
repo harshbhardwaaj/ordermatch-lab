@@ -85,21 +85,21 @@
 
 **Goal**: A reviewer can walk through the order-operations workflow using realistic data.
 
-**Independent Test**: A reviewer can inspect an order, understand extracted fields, inspect SKU matches, resolve or view exceptions, and reach an ERP-ready/approval-ready state.
+**Independent Test**: A reviewer can pick a sample order, watch it get read and matched, resolve or defer anything ambiguous, and send a fully resolved order to the ERP.
 
-- [x] T040 [US2] Build the order/RFQ queue with statuses, customer names, confidence, exception count, and time-saved indicators.
-- [x] T041 [US2] Add queue states for loading, empty, partial/stale data, and row-level API or simulated data errors.
-- [ ] T042 [US2] Build the order review layout with original order context beside extracted structured fields.
-- [ ] T043 [US2] Add document/original-context states for loading preview, failed preview, unavailable document, and fallback extracted text.
-- [ ] T044 [US2] Build the line-item normalization table showing original text and normalized product details.
-- [ ] T045 [US2] Build SKU match cards or rows with suggested SKU, confidence, alternate candidates, and match reasons.
-- [ ] T046 [US2] Build exception review UI for missing units, ambiguous SKUs, price mismatch, duplicate line, no-match, discontinued item, and low-confidence cases.
-- [ ] T047 [US2] Build order-level ERP readiness panel showing blockers, required fields, and approval-ready state.
-- [ ] T048 [US2] Add simulated state transitions for selecting an order, accepting a match, rejecting a match, resolving an exception, and marking the order ready.
-- [ ] T049 [US2] Add success, rollback, and failure feedback for accepted match, rejected match, resolved exception, and ERP-ready actions.
-- [ ] T050 [US2] Add clear prototype/sample-data indicators where needed so mocked behavior is honest.
+- [x] T040 [US2] Build the order/RFQ queue with statuses, customer names, confidence, exception count, and time-saved indicators. Superseded: the dense queue table was replaced by the guided order-intake screen (T042) once the reviewer flow moved from browsing everything at once to picking one order and following it through. The old table and its supporting `OrderReviewProvider`/`OrderReviewFrame`/stage-placeholder code were removed once the new flow was validated.
+- [x] T041 [US2] Add queue states for loading, empty, partial/stale data, and row-level API or simulated data errors. Superseded: state handling now lives on the intake, processing, and summary screens described below instead of a single dense table.
+- [x] T042 [US2] Build the order-intake screen: sample order cards with real data and clear source labels, plus a "use your own order" panel with paste-text, upload-file, and an intentionally inert "connect email" tab. The screen reflects session progress: already-sent sample orders show a sent badge and switch to a secondary "view sent order" action, and the headline updates once anything has been sent.
+- [x] T043 [US2] Build the live processing screen: header fields and line items reveal on a staggered timer inside a timeline/log layout, each line tagged matched or needs-a-decision, with a running progress indicator and an ambient side rail showing other sample orders processing in the background on their own independent timers.
+- [x] T044 [US2] Build the inline resolve-or-defer picker for flagged line items: up to three ranked catalog candidates plus a combined "type the correct match or decide later" option. Resolution is non-blocking, so the rest of the order keeps revealing while a flagged line waits for a decision.
+- [x] T045 [US2] Build the order-summary screen: the full resolved order, each line expandable to show match traceability (why it matched, using real proof items), and any line still unresolved reopens the same resolve-or-defer picker before the order can be sent.
+- [x] T046 [US2] Build the "Send to ERP" action: disabled while anything is unresolved, a brief simulated sending state, then an animated, centered sent-confirmation takeover (the line items hide, a check icon pops in, and the order reference is shown) once complete.
+- [x] T047 [US2] Build the "waiting for you" queue screen: surfaces other background-processed sample orders that still have flagged items, tracked for the browser session so an order drops off the list once it has been sent, with a clean "you're all caught up" empty state once nothing remains.
+- [x] T048 [US2] Add session-scoped state (not backend-persisted) for line resolutions and sent-order history, so decisions and progress carry across the processing, summary, waiting-queue, and intake screens within one browser session.
+- [x] T049 [US2] Add clear "Confirmed" vs "Matched" and "Sent" vs "Review this order" labeling so a reviewer can tell an automatic match from a human-confirmed one, and an already-sent order from one still waiting.
+- [x] T050 [US2] Add clear prototype/sample-data indicators where needed so mocked behavior is honest. Covered by the intake screen's own-order panel note (matching your own inventory starts with connecting your catalog). The fuller backend-vs-simulated architecture story belongs in the Phase 6 engineering thesis section, not embedded in this flow.
 
-**Checkpoint**: US2 complete. The product workflow can be clicked through without backend support and still shows realistic state behavior.
+**Checkpoint**: US2 complete. The product workflow can be clicked through without backend support and still shows realistic state behavior. Old dashboard-plan code (four-panel fields/lines/exceptions/readiness review, the `[orderId]` stage routes, and their supporting components) has been removed now that this flow is built and validated.
 
 ---
 

@@ -43,29 +43,29 @@ Goal:
 Method:
 
 1. Start at the opening.
-2. Enter prototype.
-3. Open the primary sample order.
-4. Inspect original text and extracted fields.
-5. Inspect line-item normalization.
-6. Inspect one SKU match and its reasons.
-7. Inspect one exception.
-8. Inspect ERP readiness blockers.
-9. Jump to evals.
-10. Find candidate proof and CTA.
+2. Enter the prototype and read the problem orientation.
+3. Continue through the workflow diagram.
+4. Pick a sample order on the intake screen.
+5. Watch the processing screen reveal header fields and line items live.
+6. Resolve one flagged line inline (pick a candidate) and defer another ("decide later").
+7. Continue to the summary screen and open "why this matched" on a resolved line.
+8. Resolve the deferred line on the summary screen, then send to the ERP.
+9. From the sent confirmation, open "handle what else needs you" and review one waiting order.
+10. Jump to evals, candidate proof, and CTA.
 
 Pass criteria:
 
-- Reviewer identifies at least five concepts from extraction, normalization, SKU matching, confidence, exceptions, ERP readiness, evals, traceability, onboarding repeatability, and graceful degradation.
-- Reviewer can explain why one SKU match was suggested.
-- Reviewer can explain why one order is or is not ERP-ready.
-- Reviewer notices uncertainty is routed, not hidden.
-- Reviewer understands what is sample/prototype behavior.
+- Reviewer identifies at least five concepts from live extraction/matching, human-in-the-loop resolution, traceability, multi-order background processing, confidence, evals, onboarding repeatability, and graceful degradation.
+- Reviewer can explain why one line was flagged and what the candidates offered.
+- Reviewer can explain why the "Send to ERP" action was or was not available.
+- Reviewer notices uncertainty is routed to a person, not hidden or auto-guessed.
+- Reviewer understands what is sample/prototype behavior versus what a real system would need (a connected catalog, a real backend, real ERP integration).
 
 Fail signals:
 
 - Reviewer sees only a polished dashboard, not the engineering problem.
 - Confidence looks fake or unexplained.
-- Exceptions feel decorative.
+- Flagged lines feel decorative rather than something the reviewer actually resolves.
 - Eval metrics feel disconnected from sample data.
 - Candidate proof feels like a resume dump.
 
@@ -86,13 +86,13 @@ Sections to audit:
 
 - opening
 - what I learned
-- order queue
-- document/original context
-- extracted fields
-- line-item normalization
-- SKU matching
-- exception review
-- ERP readiness
+- problem orientation
+- workflow diagram
+- order intake
+- processing
+- summary
+- sent confirmation
+- waiting queue
 - eval dashboard
 - onboarding/setup
 - candidate proof

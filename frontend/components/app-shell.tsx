@@ -7,14 +7,12 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
 import { icons } from "@/lib/icons";
-import type { WorkbenchStep } from "@/lib/product-workflow";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
   children: ReactNode;
   className?: string;
   showNavigation?: boolean;
-  workbenchSteps?: WorkbenchStep[];
 };
 
 const NAV_STORAGE_KEY = "ordermatch-nav-open";
@@ -73,89 +71,10 @@ function OrderMatchMark() {
   );
 }
 
-function getStepDotClass(status: WorkbenchStep["status"]) {
-  if (status === "current") {
-    return "border-[var(--om-accent)] bg-[var(--om-accent)]";
-  }
-
-  if (status === "done") {
-    return "border-green-500 bg-green-500";
-  }
-
-  if (status === "blocked") {
-    return "border-red-500 bg-red-500";
-  }
-
-  return "border-[var(--om-border-strong)] bg-[var(--om-surface)]";
-}
-
-function WorkbenchRailStepper({
-  steps,
-  isNavOpen,
-}: {
-  steps: WorkbenchStep[];
-  isNavOpen: boolean;
-}) {
-  if (steps.length === 0) {
-    return null;
-  }
-
-  return (
-    <div
-      aria-label="Order review steps"
-      className={cn(
-        "relative grid gap-0 border-l border-[var(--om-border)]",
-        isNavOpen ? "ml-6 mr-1 pl-5" : "ml-6 pl-0",
-      )}
-    >
-      {steps.map((step) => (
-        <TransitionLink
-          key={step.id}
-          href={step.href}
-          aria-current={step.status === "current" ? "step" : undefined}
-          className={cn(
-            "group relative flex min-h-9 items-center rounded-lg py-1.5 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
-            isNavOpen ? "gap-3 px-2 hover:bg-[var(--om-surface-2)]" : "justify-center px-0",
-          )}
-        >
-          <span
-            className={cn(
-              "absolute size-2.5 rounded-full border-2 transition-transform group-hover:scale-110",
-              isNavOpen ? "-left-[1.375rem]" : "-left-[0.3125rem]",
-              getStepDotClass(step.status),
-            )}
-          />
-          <span
-            className={cn(
-              "nav-rail-label min-w-0 transition-opacity duration-150 motion-reduce:transition-none",
-              isNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-          >
-            <span
-              className={cn(
-                "block truncate font-semibold",
-                step.status === "current"
-                  ? "text-[var(--om-accent)]"
-                  : "text-[var(--om-muted)]",
-              )}
-            >
-              {step.label}
-            </span>
-            <span className="block truncate text-[10px] leading-4 text-[var(--om-subtle)]">
-              {step.status === "blocked" ? "Needs attention" : step.description}
-            </span>
-          </span>
-        </TransitionLink>
-      ))}
-    </div>
-  );
-}
-
 export function AppShell({
   children,
   className,
   showNavigation = true,
-  workbenchSteps = [],
 }: AppShellProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
@@ -299,47 +218,40 @@ export function AppShell({
                 const NavIcon = item.icon;
 
                 return (
-                  <div key={item.href}>
-                    <TransitionLink
-                      href={item.href}
+                  <TransitionLink
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative flex h-12 items-center gap-4 rounded-xl text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
+                      isActive
+                        ? "text-[var(--om-text)]"
+                        : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
+                    )}
+                  >
+                    {isActive ? (
+                      <span className="absolute left-[-16px] h-8 w-1 rounded-r-full bg-[var(--om-accent)]" />
+                    ) : null}
+                    <span
                       className={cn(
-                        "relative flex h-12 items-center gap-4 rounded-xl text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
+                        "flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-150",
                         isActive
-                          ? "text-[var(--om-text)]"
-                          : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
+                          ? "bg-[var(--om-accent-soft)] text-[var(--om-accent)]"
+                          : "text-[var(--om-muted)] hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)]",
                       )}
                     >
-                      {isActive ? (
-                        <span className="absolute left-[-16px] h-8 w-1 rounded-r-full bg-[var(--om-accent)]" />
-                      ) : null}
-                      <span
-                        className={cn(
-                          "flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-150",
-                          isActive
-                            ? "bg-[var(--om-accent-soft)] text-[var(--om-accent)]"
-                            : "text-[var(--om-muted)] hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)]",
-                        )}
-                      >
-                        <NavIcon aria-hidden="true" className="size-5" />
-                      </span>
-                      <span
-                        className={cn(
-                          "nav-rail-label whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
-                          isNavOpen
-                            ? "opacity-100"
-                            : "pointer-events-none opacity-0",
-                        )}
-                      >
-                        {item.label}
-                      </span>
-                    </TransitionLink>
-                    {item.href === "/prototype" && workbenchSteps.length > 0 ? (
-                      <WorkbenchRailStepper
-                        steps={workbenchSteps}
-                        isNavOpen={isNavOpen}
-                      />
-                    ) : null}
-                  </div>
+                      <NavIcon aria-hidden="true" className="size-5" />
+                    </span>
+                    <span
+                      className={cn(
+                        "nav-rail-label whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
+                        isNavOpen
+                          ? "opacity-100"
+                          : "pointer-events-none opacity-0",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                  </TransitionLink>
                 );
               })}
             </nav>

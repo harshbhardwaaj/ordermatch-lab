@@ -23,43 +23,37 @@ Adopt these current design-system priorities during implementation:
 - Subtle ChatGPT/Claude-style sidebar toggle for expanding rail labels.
 - Native opacity-only route transitions where supported, with reduced-motion support.
 - Minimal inline SVG logo mark in the rail's top slot.
-- Data-Dense Dashboard for the workbench surface.
-- Document Pipeline Dashboard patterns for order/RFQ processing.
+- Guided, one-order-at-a-time sequence for the order-review flow (intake, processing, summary, sent confirmation, waiting queue), not a dense dashboard.
+- Ambient, non-interactive side rail (processing screen) to show background activity without competing for attention; collapses below the `lg` breakpoint.
 - Helpful empty states with a message and clear action.
-- Skeleton screens for page or section loading.
-- Inline spinners only for small contained actions.
+- Inline spinners only for small contained actions (for example, the "Sending to the ERP" button state).
 - Accessible errors with `role="alert"` or `aria-live` where relevant.
 - Error placement near the failed row, field, chart, or action.
 - Error recovery with a retry, fallback, or next step.
-- Responsive table handling through horizontal scroll or stacked cards.
-- Row highlighting, hover tooltips, and smooth filter transitions.
-- Bulk action affordances where repeated review actions would otherwise become tedious.
+- Card grids that reflow responsively instead of dense tables.
 
 ## Tables
 
-Use tables for order queues, line-item normalization, SKU candidates, exception lists, and eval details.
+The order-review flow does not use dense tables. Intake and the waiting queue use cards; processing uses a timeline/log; the summary screen uses a resolved list. Reserve dense tables for the future eval-details drill-down (Phase 6), where a real need for row-by-row comparison exists.
 
-Required behavior:
+If a table is ever added there, required behavior:
 
 - toolbar with search, filters, and view controls when there is enough data
 - stable row height where possible
-- sticky or repeated key columns on wide dense tables if needed
 - sortable columns only when sorting is useful
-- visible selected row state
 - row hover state for scan confidence
-- row-level status, confidence, and exception indicators
-- row-level error state for failed refresh or failed action
-- optional multi-select and action bar for repeated review tasks
+- row-level status indicators
 - horizontal scroll wrapper on smaller screens where comparison matters
 - stacked card layout on smaller screens where row comparison is less important
 - empty state with next step
-- partial state when some rows or sections fail
+- partial state when some rows fail
 
 Avoid:
 
 - decorative table styling that reduces scan speed
 - hiding original customer text
 - turning table actions into ambiguous text links
+- reaching for a table where a card list or sequential screen already tells the story better
 
 ## Badges And Status Indicators
 
@@ -90,9 +84,9 @@ Badges should include text and color. Critical states should also use icons.
 
 Use clear command buttons:
 
-- primary: Enter prototype, Accept match, Mark ERP-ready, Run sample eval
-- secondary: Review exceptions, View match reasons, Import sample order
-- destructive or risky: Reject match, Block order, Reset demo state
+- primary: Show me, Review this order, Continue to order summary, Send to ERP, Run sample eval
+- secondary: Start a new order, Use this answer, Why this matched
+- destructive or risky: none in the current flow; "Decide later" is a neutral deferral, not a risky action
 
 Rules:
 
@@ -105,27 +99,15 @@ Rules:
 
 ## Tabs And Segmented Controls
 
-Use tabs for independent product views:
+The core flow is sequential (intake, processing, summary, sent confirmation, waiting queue), not tab-switched between independent views. Tabs are used locally within a screen, not as the top-level navigation model:
 
-- Queue
-- Order review
-- Exceptions
-- ERP readiness
-- Evals
-- Setup
-
-Use segmented controls for mode switches:
-
-- Original vs normalized
-- Top match vs alternatives
-- All exceptions vs blockers
-- Demo data vs future API boundary where relevant
+- own-order panel: Paste text, Upload a file, Connect email
 
 Rules:
 
 - active state must be visible without relying only on color
 - keyboard focus must move predictably
-- switching views should not erase selected order context unless the user resets it
+- switching a local tab should not lose in-progress input in another tab unless the user navigates away
 
 ## Sidebars And Navigation
 
@@ -152,47 +134,40 @@ Rail behavior:
 - expanded rail pushes content over instead of covering it
 - initial open/closed preference is applied before paint to avoid layout flash
 
-## Review Panels
+## Review Screens
 
-Order review should use panels for:
+Order review is a sequence of screens, not a single page of panels:
 
-- original order context
-- extracted structured fields
-- line-item table
-- match details
-- exceptions
-- ERP readiness
+- intake: pick a sample order or bring your own
+- processing: header and line items reveal live, each line resolved or deferred inline
+- summary: the fully resolved order, with traceability, before it is sent
+- sent confirmation: a dedicated moment, not folded into the summary screen
+- waiting queue: other orders still needing a decision
 
 Rules:
 
-- keep original text inspectable
-- keep normalized interpretation adjacent
-- make blockers obvious
-- allow partial failure of one panel without collapsing the rest
-- use skeletons at panel level while loading
-- use panel-local errors with retry or fallback when a panel fails
-- keep stale data visible with a stale indicator when fresh data fails
+- keep original customer text visible beside the normalized interpretation on every line, at every stage
+- make anything still needing a decision obvious before allowing send
+- a flagged line's resolve-or-defer picker should not block the rest of the order from continuing to reveal, or from being reviewed later
+- traceability ("why this matched") opens per line without disturbing the rest of the list
+- session state (resolutions, sent orders) is client-side only in this prototype; treat any cross-screen persistence as scoped to one browser session, not a real backend
 
 ## Match Details
 
-Each suggested SKU match should show:
+Each flagged line's resolve picker shows:
 
-- suggested internal SKU
-- confidence band
-- match score if used, but do not pretend false precision
-- why it matched
-- alternate candidates
-- missing or conflicting evidence
-- required human decision where needed
+- up to three ranked catalog candidates (name and SKU)
+- one combined "not one of these" slot: type the correct match, or decide later
+- for lines already matched or confirmed, an expandable "why this matched" panel built from real proof items (size, material, standard, unit, customer part number, and so on)
 
 Interaction rules:
 
-- hovering or focusing a reason chip can explain the matched evidence
-- opening match details should not shift the surrounding table layout
-- accepting or rejecting a match must give immediate success or failure feedback
-- a failed action should leave the previous decision intact
+- picking a candidate resolves the line immediately, with visible before/after feedback (the tag flips to Confirmed)
+- deferring a line collapses it back into the list with a "review now" link, not a dead end
+- opening the "why this matched" panel should not shift the surrounding list layout
+- a candidate list should never grow its own scroll region; three ranked options plus the combined slot is the ceiling
 
-Match reason chips:
+Match reason kinds (used in proof items):
 
 - size
 - material
@@ -204,58 +179,26 @@ Match reason chips:
 - price
 - availability
 
-## Exception UI
+## Flagged-Line States
 
-Exception categories:
+The underlying sample data still models specific exception categories (missing unit, ambiguous SKU, low confidence, no catalog match, discontinued item, price mismatch, duplicate line, delivery ambiguity, required ERP field missing), but the UI does not expose a separate browsable exception list. A flagged line has exactly one visible state until resolved: "Needs a decision," with the resolve-or-defer picker attached directly to that line.
 
-- Missing unit
-- Ambiguous SKU
-- Low confidence
-- No catalog match
-- Discontinued item
-- Price mismatch
-- Duplicate line
-- Delivery ambiguity
-- Required ERP field missing
+Rules:
 
-Each exception should include:
+- do not add a separate exception-category filter or browse UI unless a real need for it shows up; the inline per-line picker is deliberately simpler than the original panel-based plan
+- whatever caused the flag should be inferable from the candidates and proof items shown, not hidden behind a category label the reviewer never sees
+- a deferred line is not a dead end; it must be reachable again from the same screen or the next one (summary)
 
-- what happened
-- why it matters
-- what the reviewer can do next
-- whether it blocks ERP readiness
+## Send-to-ERP Gate
 
-Exception controls:
+The summary screen's send action is a single gate, not a multi-row checklist panel.
 
-- group by blocker vs review vs resolved
-- expose bulk actions only for safe repeated work
-- place row-level save errors directly on the affected exception
+Rules:
 
-## ERP Readiness Panel
-
-Show readiness as a checklist, not a vague score.
-
-Required checks:
-
-- customer identified
-- PO/RFQ id present
-- delivery location present
-- delivery date usable or intentionally unresolved
-- every line has SKU or approved exception path
-- quantity and unit valid
-- price accepted or flagged
-- blocking exceptions resolved
-- review decisions saved or simulated
-
-States:
-
-- Ready
-- Review needed
-- Blocked
-- Partial data
-- Validation unavailable
-
-The final action must stay disabled while blockers remain, with a visible explanation of what is missing.
+- "Send to ERP" only appears once every line is auto-matched, human-confirmed, or resolved with a custom answer
+- while anything is unresolved, show a plain count ("N items still need a decision") instead of the send button
+- sending is a simulated action with a brief loading state, then a dedicated sent-confirmation screen, not an inline success message
+- do not build a separate multi-check readiness panel unless a real need for one shows up beyond the single unresolved-count gate
 
 ## Eval Components
 
