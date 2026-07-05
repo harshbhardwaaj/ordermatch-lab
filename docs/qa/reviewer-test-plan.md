@@ -51,11 +51,11 @@ Method:
 7. Continue to the summary screen and open "why this matched" on a resolved line.
 8. Resolve the deferred line on the summary screen, then send to the ERP.
 9. From the sent confirmation, open "handle what else needs you" and review one waiting order.
-10. Jump to evals, candidate proof, and CTA.
+10. Open "Set this up for your own catalog," or the "How it works" walkthrough, then candidate proof and CTA.
 
 Pass criteria:
 
-- Reviewer identifies at least five concepts from live extraction/matching, human-in-the-loop resolution, traceability, multi-order background processing, confidence, evals, onboarding repeatability, and graceful degradation.
+- Reviewer identifies at least five concepts from live extraction/matching, human-in-the-loop resolution, traceability, multi-order background processing, hybrid matching, confidence thresholds, evals as a grouping method (not a metrics dashboard), and onboarding repeatability.
 - Reviewer can explain why one line was flagged and what the candidates offered.
 - Reviewer can explain why the "Send to ERP" action was or was not available.
 - Reviewer notices uncertainty is routed to a person, not hidden or auto-guessed.
@@ -66,7 +66,7 @@ Fail signals:
 - Reviewer sees only a polished dashboard, not the engineering problem.
 - Confidence looks fake or unexplained.
 - Flagged lines feel decorative rather than something the reviewer actually resolves.
-- Eval metrics feel disconnected from sample data.
+- The evals slide feels like an invented number rather than a demonstrated grouping method.
 - Candidate proof feels like a resume dump.
 
 ## UX State Audit
@@ -85,7 +85,6 @@ Before a screen is called done, verify:
 Sections to audit:
 
 - opening
-- what I learned
 - problem orientation
 - workflow diagram
 - order intake
@@ -93,7 +92,7 @@ Sections to audit:
 - summary
 - sent confirmation
 - waiting queue
-- eval dashboard
+- engineering thesis ("how it works" walkthrough, including the evals slide)
 - onboarding/setup
 - candidate proof
 - final CTA
@@ -107,7 +106,7 @@ Pass criteria:
 - catalog has near-neighbor SKUs
 - each exception maps to a visible data issue
 - match reasons are specific
-- eval metrics are plausible and tied to examples
+- the evals slide's example runs and patterns are plausible and tied to real sample-order edge cases
 - sample-data disclosure is present where needed
 
 Fail signals:

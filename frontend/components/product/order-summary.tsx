@@ -174,6 +174,14 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                 <TransitionLink href="/prototype/start">Start a new order</TransitionLink>
               </Button>
             </div>
+            <div className="[animation:reveal-item_400ms_ease-out] motion-reduce:animate-none">
+              <TransitionLink
+                href="/prototype/setup"
+                className="text-sm font-semibold text-[var(--om-accent)] underline-offset-4 hover:underline"
+              >
+                Set this up for your own catalog
+              </TransitionLink>
+            </div>
           </section>
         </main>
       </AppShell>

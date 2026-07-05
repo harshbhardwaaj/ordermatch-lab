@@ -186,12 +186,12 @@ Rules for product screens:
 The interface should visibly support the engineering thesis:
 
 - original text shown beside normalized interpretation
-- confidence badges with clear bands
+- confidence demonstrated as an interactive threshold, not a persistent badge (decision in Phase 6: a human already reviews every uncertain line, so a separate badge is redundant, not added trust)
 - alternate SKU candidates
 - match reason chips
 - exception categories
 - ERP readiness blockers
-- eval metrics and failure modes
+- evals shown as a grouping method over many runs, not invented accuracy metrics
 - onboarding/setup steps
 - partial and degraded states
 
