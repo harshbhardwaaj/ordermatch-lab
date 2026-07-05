@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, ExternalLink, Layers, Search } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -611,8 +612,23 @@ const SLIDES: Slide[] = [
 /* Shell                                                               */
 /* ------------------------------------------------------------------ */
 
+function stepFromParam(raw: string | null) {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed >= SLIDES.length) {
+    return 0;
+  }
+  return parsed;
+}
+
 export function HowItWorks() {
-  const [step, setStep] = useState(0);
+  const searchParams = useSearchParams();
+  const stepParam = searchParams.get("step");
+  const [step, setStep] = useState(() => stepFromParam(stepParam));
+
+  useEffect(() => {
+    setStep(stepFromParam(stepParam));
+  }, [stepParam]);
+
   const slide = SLIDES[step];
   const Visual = slide.visual;
   const isFirst = step === 0;

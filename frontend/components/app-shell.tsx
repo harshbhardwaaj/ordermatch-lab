@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
 import { icons } from "@/lib/icons";
+import { THESIS_STEPS } from "@/lib/thesis-nav";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -16,15 +17,68 @@ type AppShellProps = {
   showNavigation?: boolean;
 };
 
+type NavChild = { href: string; label: string };
+
+type NavItem = {
+  href: string;
+  icon: (typeof icons)[keyof typeof icons];
+  label: string;
+  children?: NavChild[];
+};
+
 const NAV_STORAGE_KEY = "ordermatch-nav-open";
 
-const navItems = [
+const navItems: NavItem[] = [
   { href: "/", icon: icons.pending, label: "Start" },
-  { href: "/prototype", icon: icons.orderReview, label: "What I built" },
-  { href: "/thesis", icon: icons.readiness, label: "How it works" },
+  {
+    href: "/prototype",
+    icon: icons.orderReview,
+    label: "What I built",
+    children: [
+      { href: "/prototype", label: "Prototype" },
+      { href: "/prototype/setup", label: "Setup" },
+    ],
+  },
+  {
+    href: "/thesis",
+    icon: icons.readiness,
+    label: "How it works",
+    children: THESIS_STEPS.map(({ step, label }) => ({
+      href: step === 0 ? "/thesis" : `/thesis?step=${step}`,
+      label,
+    })),
+  },
   { href: "/proof", icon: icons.trust, label: "Why me" },
   { href: "/contact", icon: icons.mail, label: "Next step" },
-] as const;
+];
+
+// When every child shares the same base path (e.g. thesis slides all live at
+// /thesis), there is no way to tell which one is active from the pathname
+// alone, so skip the per-child highlight rather than guessing wrong.
+function getActiveChildHref(children: NavChild[] | undefined, pathname: string) {
+  if (!children) {
+    return null;
+  }
+
+  const basePaths = new Set(children.map((child) => child.href.split("?")[0]));
+  if (basePaths.size <= 1) {
+    return null;
+  }
+
+  let bestHref: string | null = null;
+  let bestLength = -1;
+
+  for (const child of children) {
+    const basePath = child.href.split("?")[0];
+    const matches = pathname === basePath || pathname.startsWith(`${basePath}/`);
+    if (matches && basePath.length > bestLength) {
+      bestLength = basePath.length;
+      bestHref = child.href;
+    }
+  }
+
+  return bestHref;
+}
 
 function syncNavOpenAttribute(isOpen: boolean) {
   document.documentElement.dataset.navOpen = isOpen ? "true" : "false";
@@ -163,42 +217,69 @@ export function AppShell({
                     ? pathname === "/"
                     : pathname.startsWith(item.href);
                 const NavIcon = item.icon;
+                const activeChildHref = getActiveChildHref(item.children, pathname);
+                const showChildren =
+                  isNavOpen && isActive && item.children && item.children.length > 0;
 
                 return (
-                  <TransitionLink
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "relative flex h-12 items-center gap-4 rounded-xl text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
-                      isActive
-                        ? "text-[var(--om-text)]"
-                        : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
-                    )}
-                  >
-                    {isActive ? (
-                      <span className="absolute left-[-16px] h-8 w-1 rounded-r-full bg-[var(--om-accent)]" />
-                    ) : null}
-                    <span
+                  <div key={item.href}>
+                    <TransitionLink
+                      href={item.href}
                       className={cn(
-                        "flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-150",
+                        "relative flex h-12 items-center gap-4 rounded-xl text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
                         isActive
-                          ? "bg-[var(--om-accent-soft)] text-[var(--om-accent)]"
-                          : "text-[var(--om-muted)] hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)]",
+                          ? "text-[var(--om-text)]"
+                          : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
                       )}
                     >
-                      <NavIcon aria-hidden="true" className="size-5" />
-                    </span>
-                    <span
-                      className={cn(
-                        "nav-rail-label whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
-                        isNavOpen
-                          ? "opacity-100"
-                          : "pointer-events-none opacity-0",
-                      )}
-                    >
-                      {item.label}
-                    </span>
-                  </TransitionLink>
+                      {isActive ? (
+                        <span className="absolute left-[-16px] h-8 w-1 rounded-r-full bg-[var(--om-accent)]" />
+                      ) : null}
+                      <span
+                        className={cn(
+                          "flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors duration-150",
+                          isActive
+                            ? "bg-[var(--om-accent-soft)] text-[var(--om-accent)]"
+                            : "text-[var(--om-muted)] hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)]",
+                        )}
+                      >
+                        <NavIcon aria-hidden="true" className="size-5" />
+                      </span>
+                      <span
+                        className={cn(
+                          "nav-rail-label whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
+                          isNavOpen
+                            ? "opacity-100"
+                            : "pointer-events-none opacity-0",
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                    </TransitionLink>
+
+                    {showChildren ? (
+                      <div className="ml-[1.6rem] mt-1 flex flex-col gap-0.5 border-l border-[var(--om-border)] pl-4">
+                        {item.children!.map((child) => {
+                          const isChildActive = activeChildHref === child.href;
+
+                          return (
+                            <TransitionLink
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "nav-rail-label rounded-md py-1.5 text-xs font-medium transition-colors duration-150",
+                                isChildActive
+                                  ? "text-[var(--om-accent)]"
+                                  : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
+                              )}
+                            >
+                              {child.label}
+                            </TransitionLink>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </nav>
@@ -236,20 +317,46 @@ export function AppShell({
                   item.href === "/"
                     ? pathname === "/"
                     : pathname.startsWith(item.href);
+                const activeChildHref = getActiveChildHref(item.children, pathname);
+                const showChildren = isActive && item.children && item.children.length > 0;
 
                 return (
-                  <TransitionLink
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
-                      isActive
-                        ? "bg-[var(--om-accent-soft)] text-[var(--om-text)]"
-                        : "text-[var(--om-muted)]",
-                    )}
-                  >
-                    {item.label}
-                  </TransitionLink>
+                  <div key={item.href}>
+                    <TransitionLink
+                      href={item.href}
+                      className={cn(
+                        "block rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--om-surface-2)] hover:text-[var(--om-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]",
+                        isActive
+                          ? "bg-[var(--om-accent-soft)] text-[var(--om-text)]"
+                          : "text-[var(--om-muted)]",
+                      )}
+                    >
+                      {item.label}
+                    </TransitionLink>
+
+                    {showChildren ? (
+                      <div className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--om-border)] pl-3">
+                        {item.children!.map((child) => {
+                          const isChildActive = activeChildHref === child.href;
+
+                          return (
+                            <TransitionLink
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                                isChildActive
+                                  ? "text-[var(--om-accent)]"
+                                  : "text-[var(--om-muted)] hover:text-[var(--om-text)]",
+                              )}
+                            >
+                              {child.label}
+                            </TransitionLink>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </nav>
