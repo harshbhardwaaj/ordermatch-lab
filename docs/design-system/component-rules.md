@@ -251,6 +251,8 @@ Candidate content is secondary. Each proof card needs:
 - no course grades
 - no unsupported claims
 
+Layout (Phase 8): a scroll-triggered vertical timeline, not a static grid. Each proof point is a numbered stop revealed with a fade/slide-up animation via `IntersectionObserver` as the reader scrolls to it, no next/back buttons. Each stop leads with the actual project name as its title, not an achievement sentence or the capability label, so a first-time reader immediately knows whose project it is. The capability label renders as a small tagged pill, not a heading. Respects `prefers-reduced-motion`.
+
 ## Contact / Next-Step Components
 
 The final contact page should support:

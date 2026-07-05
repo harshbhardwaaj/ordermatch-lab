@@ -233,6 +233,8 @@ Rules:
 - Candidate proof stays after product proof.
 - Each card maps to a Comena-relevant capability.
 
+Superseded (Phase 8): built as a scroll-triggered vertical timeline (`components/narrative/candidate-proof.tsx`), not a static 3-card row. Four numbered stops instead of three: AI Classification System (ALEVOR), AI Investment Analyst, CV-JD Fit Scorer, and TUM Coursework (added as a fourth stop, not folded into a card). Each stop reveals with a fade/slide-up animation via `IntersectionObserver` as the reader scrolls to it, no next/back buttons. The page opens by naming OrderMatch Lab itself as the strongest proof already seen, linking back to `/prototype` and `/thesis`, rather than treating it as a separate card. Each stop leads with the actual project name as its title (not an achievement sentence), tagged with what kind of proof it is (work project, personal project, coursework) and a small "Comena-relevant skill" pill, so a first-time reader immediately understands whose project it is. See `docs/design-system/component-rules.md` for the full layout rule.
+
 ## Contact / Next Step
 
 ```text
