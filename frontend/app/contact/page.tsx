@@ -1,88 +1,97 @@
-import { AppShell } from "@/components/app-shell";
-import { RouteShell } from "@/components/narrative/route-shell";
-import { icons } from "@/lib/icons";
+import { Calendar, Github, Linkedin, Phone } from "lucide-react";
 
-const contactLinks = [
+import { AppShell } from "@/components/app-shell";
+import { CopyEmailLink } from "@/components/narrative/copy-email-link";
+import { PRIMARY_CONTACT_CARD_CLASS, PRIMARY_CONTACT_ICON_CLASS } from "@/lib/contact-card-styles";
+
+const EMAIL = "harshbhardwaaj29@gmail.com";
+const PHONE_DISPLAY = "+49 1525 2454724";
+const PHONE_HREF = "tel:+4915252454724";
+
+const secondaryLinks = [
   {
-    label: "Quick call",
-    value: "Calendar link pending",
-  },
-  {
-    label: "Email",
-    value: "Preferred email pending",
-  },
-  {
-    href: "https://github.com/harshbhardwaaj",
     label: "GitHub",
-    value: "github.com/harshbhardwaaj",
+    href: "https://github.com/harshbhardwaaj",
+    icon: Github,
   },
   {
     label: "LinkedIn",
-    value: "Profile link pending",
+    href: "https://www.linkedin.com/in/harshbhaardwaj/",
+    icon: Linkedin,
   },
 ] as const;
 
 export default function ContactPage() {
-  const ExternalLink = icons.externalLink;
-
   return (
     <AppShell>
-      <RouteShell
-        eyebrow="Next step"
-        title="A simple way to continue."
-        description="This page keeps the next step simple, with supporting links nearby once the final contact details are selected."
-        primaryHref="/prototype"
-        primaryLabel="Back to what I built"
-        items={[
-          "Ask for a short conversation.",
-          "Use email as the fallback if there is no calendar link.",
-          "Keep GitHub and LinkedIn nearby for quick inspection.",
-          "Mark unavailable links clearly instead of sending people nowhere.",
-        ]}
+      <main
+        id="main"
+        className="relative mx-auto flex min-h-screen w-full max-w-4xl flex-col px-5 py-10 text-[var(--om-text)] sm:px-8"
       >
-        <section
-          aria-label="Contact links"
-          className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {contactLinks.map((link) => {
-            const content = (
-              <>
-                <span className="text-sm font-semibold text-[var(--om-text)]">
-                  {link.label}
-                </span>
-                <span className="mt-1 text-xs leading-5 text-[var(--om-muted)]">
-                  {link.value}
-                </span>
-                {"href" in link ? (
-                  <ExternalLink
-                    aria-hidden="true"
-                    className="absolute right-4 top-4 size-4 text-[var(--om-accent)]"
-                  />
-                ) : null}
-              </>
-            );
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_440px_at_58%_18%,rgba(var(--om-accent-rgb),0.12),transparent_62%),var(--om-bg)]" />
 
-            return "href" in link ? (
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
+          Get in touch
+        </p>
+        <h1 className="mt-4 text-3xl font-extrabold leading-tight text-[var(--om-text)] sm:text-4xl">
+          Let&apos;s talk about Comena.
+        </h1>
+        <p className="mt-3 text-base leading-7 text-[var(--om-muted)]">
+          Book a call, email, or call directly, whichever is easiest.
+        </p>
+
+        <section
+          aria-label="Primary contact actions"
+          className="mt-8 grid gap-4 sm:grid-cols-3"
+        >
+          <a
+            href="https://calendly.com/harshbhardwaaj29/chat-with-harsh"
+            rel="noreferrer"
+            target="_blank"
+            className={PRIMARY_CONTACT_CARD_CLASS}
+          >
+            <span className={PRIMARY_CONTACT_ICON_CLASS}>
+              <Calendar aria-hidden="true" className="size-5" />
+            </span>
+            <span className="text-base font-bold text-[var(--om-text)]">Book a call</span>
+            <span className="text-sm text-[var(--om-muted)]">Pick a time on Calendly</span>
+          </a>
+
+          <CopyEmailLink email={EMAIL} />
+
+          <a href={PHONE_HREF} className={PRIMARY_CONTACT_CARD_CLASS}>
+            <span className={PRIMARY_CONTACT_ICON_CLASS}>
+              <Phone aria-hidden="true" className="size-5" />
+            </span>
+            <span className="text-base font-bold text-[var(--om-text)]">Call</span>
+            <span className="text-sm text-[var(--om-muted)]">{PHONE_DISPLAY}</span>
+          </a>
+        </section>
+
+        <section
+          aria-label="Other links"
+          className="mt-10 flex flex-wrap items-center gap-3 border-t border-[var(--om-border)] pt-6"
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--om-subtle)]">
+            Also here
+          </span>
+          {secondaryLinks.map((link) => {
+            const Icon = link.icon;
+            return (
               <a
                 key={link.label}
                 href={link.href}
                 rel="noreferrer"
                 target="_blank"
-                className="relative flex min-h-28 flex-col rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]/82 p-4 outline-none transition-colors duration-200 hover:border-[var(--om-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--om-border)] px-3.5 py-1.5 text-sm font-medium text-[var(--om-muted)] outline-none transition-colors duration-200 hover:border-[var(--om-border-strong)] hover:text-[var(--om-text)] focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
               >
-                {content}
+                <Icon aria-hidden="true" className="size-3.5" />
+                {link.label}
               </a>
-            ) : (
-              <div
-                key={link.label}
-                className="relative flex min-h-28 flex-col rounded-xl border border-[var(--om-border)] bg-[var(--om-surface-2)]/82 p-4"
-              >
-                {content}
-              </div>
             );
           })}
         </section>
-      </RouteShell>
+      </main>
     </AppShell>
   );
 }

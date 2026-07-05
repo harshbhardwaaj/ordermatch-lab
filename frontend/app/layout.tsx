@@ -12,9 +12,9 @@ const shellStateScript = `
 
   try {
     const storedNavOpen = localStorage.getItem("ordermatch-nav-open");
-    document.documentElement.dataset.navOpen = storedNavOpen === "true" ? "true" : "false";
+    document.documentElement.dataset.navOpen = storedNavOpen === "false" ? "false" : "true";
   } catch {
-    document.documentElement.dataset.navOpen = "false";
+    document.documentElement.dataset.navOpen = "true";
   }
 `;
 

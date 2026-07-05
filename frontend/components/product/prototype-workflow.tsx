@@ -448,7 +448,11 @@ export function PrototypeWorkflow() {
 
             <MobileArrow />
 
-            <div className="relative z-10 grid gap-16">
+            <p className="text-center font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--om-subtle)] lg:hidden">
+              Splits into two outcomes, based on confidence
+            </p>
+
+            <div className="relative z-10 grid gap-4 lg:gap-16">
               <FlowCard ref={erpRef} className="border-[var(--om-accent)]">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 aria-hidden="true" className="size-5 text-[var(--om-accent)]" />

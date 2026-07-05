@@ -90,7 +90,7 @@ export function AppShell({
   className,
   showNavigation = true,
 }: AppShellProps) {
-  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(true);
   const navRef = useRef<HTMLElement | null>(null);
   const pathname = usePathname();
   const PanelIcon = isNavOpen ? icons.panelClose : icons.panelOpen;

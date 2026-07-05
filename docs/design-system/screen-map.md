@@ -79,6 +79,14 @@ Written after Phase 8 shipped:
 - **Four proof points, not three.** TUM Coursework (including Python for Engineering and Data Analysis, in progress) is its own timeline stop alongside ALEVOR AI Classification, AI Investment Analyst, and CV-JD Fit Scorer.
 - **The Bomberman Java project was dropped**, not included as a fourth or fifth item. Decided not AI/data-specific enough to earn a place next to the other three.
 
+## Scope Notes (Phase 9 reality check)
+
+Written after Phase 9 shipped:
+
+- **Contact/Next step's "Primary action" and error/empty wording above is stale.** The Major Sections table row still says "Calendar unavailable, show email fallback" and "No calendar selected, use email" — those assumed no calendar link existed yet. A real Calendly link now exists (`https://calendly.com/harshbhardwaaj29/chat-with-harsh`), so the page instead shows calendar, email, and phone as three equal-weight actions, not a primary-plus-fallback pair.
+- **GitHub and LinkedIn only, not resume or project links.** Resume has no link ready yet, and the AI Investment Analyst / CV-JD Fit Scorer project links already live on `/proof` and are deliberately not repeated on `/contact`, this page is contact-only. See `docs/design-system/component-rules.md` and `docs/design-system/wireframes.md` for the shipped layout.
+- **The shared `RouteShell` placeholder component is gone.** `/contact` was its last remaining usage; it was deleted rather than left as dead code.
+
 ## State Coverage Rules
 
 - Loading state must preserve layout shape where possible.
