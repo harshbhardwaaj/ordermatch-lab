@@ -296,7 +296,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                             <span className="flex items-center gap-1.5 font-medium text-[var(--om-text)]">
                               {proof.sourceValue}
                               <span className="text-[var(--om-subtle)]">to</span>
-                              {proof.catalogValue ?? "—"}
+                              {proof.catalogValue ?? "n/a"}
                               {proof.supportsMatch ? (
                                 <Check className="size-3 text-green-600" />
                               ) : (

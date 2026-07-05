@@ -272,6 +272,8 @@ States:
 - unavailable resume link
 - external link failed or blocked
 
+Superseded (Phase 9, decision made by Harsh): built as three equal-weight primary action cards (`app/contact/page.tsx`), calendar (Calendly), email, and phone, each with an icon in a circle, a bold label, and one line of supporting text. GitHub and LinkedIn render as a small secondary pill row below a divider, clearly lower visual weight than the three primary cards. Resume and the project links (AI Investment Analyst, CV-JD Fit Scorer) are not on this page at all, resume has no link ready yet, and the project links already live on `/proof`, repeating them here would be redundant. Only one state from the list above is actually implemented: copied email success, built as a click-to-copy button (`components/narrative/copy-email-link.tsx`) that shows "Copied" for 2 seconds on success and falls back to opening `mailto:` if `navigator.clipboard.writeText` throws. "Missing calendar fallback" and "unavailable resume link" no longer apply, the calendar link is live and resume was dropped from this page entirely.
+
 ## Accessibility And Keyboard
 
 - every interactive element needs an accessible label

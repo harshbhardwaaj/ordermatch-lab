@@ -696,9 +696,9 @@ export function HowItWorks() {
           ) : (
             <section
               key={slide.id}
-              className="grid w-full items-center gap-8 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none lg:grid-cols-2 lg:gap-12"
+              className="grid w-full min-w-0 items-center gap-8 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none lg:grid-cols-2 lg:gap-12"
             >
-              <div className="flex flex-col">
+              <div className="flex min-w-0 flex-col">
                 <p className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
                   <BrandMark className="size-4" />
                   {slide.eyebrow}
@@ -718,7 +718,7 @@ export function HowItWorks() {
                 ) : null}
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <Visual />
               </div>
             </section>

@@ -219,6 +219,8 @@ const BASELINE_CHECKS = [
 ];
 
 function BaselinePanel({ baselineRan, onBaselineRanChange }: SetupPanelProps) {
+  const [running, setRunning] = useState(false);
+
   if (!baselineRan) {
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-[var(--om-border-strong)] bg-[var(--om-surface)] p-6">
@@ -228,10 +230,14 @@ function BaselinePanel({ baselineRan, onBaselineRanChange }: SetupPanelProps) {
         </p>
         <Button
           type="button"
-          onClick={() => onBaselineRanChange(true)}
+          disabled={running}
+          onClick={() => {
+            setRunning(true);
+            setTimeout(() => onBaselineRanChange(true), 600);
+          }}
           className="bg-[var(--om-accent)] text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
         >
-          Run sample benchmark
+          {running ? "Running benchmark..." : "Run sample benchmark"}
         </Button>
       </div>
     );

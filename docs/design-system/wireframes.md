@@ -251,3 +251,5 @@ Rules:
 - Direct and confident.
 - Calendar can wait until Harsh chooses a tool.
 - Email fallback must work.
+
+Superseded (Phase 9): the CTA row above shows five equal-weight links in one grid, that is not what shipped. The actual page leads with three equal-weight primary action cards (Book a call via Calendly, Email with click-to-copy, Call via a `tel:` link), each with an icon and one line of supporting text. GitHub and LinkedIn are demoted to a small secondary pill row below a divider, not shown at the same visual weight. Resume and the project links (AI Investment Analyst, CV-JD Fit Scorer) are intentionally absent, per Harsh's direction this page is for contacting him, not a second index of project links, and the project links already live on `/proof`. The old intro paragraph and "Back to what I built" / "Back to start" nav buttons (both inherited from the shared `RouteShell` placeholder) were removed since the nav rail already covers navigation. See `docs/design-system/component-rules.md` for the current layout rule.
