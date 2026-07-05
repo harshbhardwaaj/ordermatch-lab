@@ -34,7 +34,6 @@ The state plan uses the current blue-first light/dark design system plus the UX 
 | Section | Goal | Proof point | Primary action | Loading | Success | Error | Empty | Partial |
 |---|---|---|---|---|---|---|---|---|
 | Opening | Explain why this exists for Comena. | Candidate story drives product. | Show me. | Skeleton for first viewport if assets/data load later. | Reviewer understands Comena-specific project. | Supporting link unavailable with fallback copy. | No supporting proof loaded, still show core pitch. | Prototype link works even if proof badges fail. |
-| What I learned | Summarize public workflow understanding. | Harsh studied inbox-to-ERP automation and article matching. | Continue to workflow. | Small skeleton rows. | Research points render. | Source preview unavailable, keep summarized insight. | No source cards, show compact narrative. | Some research cards absent, core workflow remains. |
 | Problem orientation | State the messy-order-email problem in plain words. | The problem is real and specific, not abstract AI framing. | See how I'd solve this for Comena. | n/a, static content. | Reviewer understands the pain point before seeing the workflow. | n/a. | n/a. | n/a. |
 | Workflow diagram | Show the shape of the solution before the reviewer touches it. | Most orders never need a person; the fork is the whole idea. | Experience it yourself. | n/a, static diagram, live-measured connectors. | Order comes in, AI-assisted review, CLEAR/NEEDS REVIEW fork, AFTER FIX loop all visible. | n/a. | n/a. | n/a. |
 | Order intake | Let the reviewer pick a real order to follow, or bring their own. | The system reduces to one order, one story, at a time. | Review this order. | n/a, static sample cards. | Sample orders and own-order panel render; already-sent orders marked and de-emphasized. | n/a, own-order paste/upload has no failure path in the prototype. | n/a, sample data is always present. | Own-order panel remains usable even if clipboard access is blocked. |
@@ -42,9 +41,8 @@ The state plan uses the current blue-first light/dark design system plus the UX 
 | Summary | Show the fully resolved order before it is sent. | Every match has a reason, not just a score. | Send to ERP. | n/a, resolved instantly from prior screen state. | Order fully resolved and ready to send. | Any line still needing a decision blocks the send action with a clear count. | n/a. | The traceability panel opens per line without disturbing the rest of the list. |
 | Sent confirmation | Make a completed send feel finished, not just logged. | The order genuinely left the review queue. | Handle what else needs you, or start a new order. | Brief "Sending to the ERP" button state. | Centered animated confirmation with the order reference. | n/a, the simulated action cannot fail in this prototype. | n/a. | n/a. |
 | Waiting queue | Prove the system handles more than one order at a time. | Background orders keep moving while the reviewer works one at a time. | Review this order. | n/a, static per session. | Still-open background orders listed with their flagged-item counts. | n/a. | Nothing waiting, reviewer is caught up. | n/a. |
-| Engineering thesis | Explain production problems without a long essay. | Extraction, normalization, matching, confidence, evals, onboarding, traceability, graceful degradation. | Jump to evals or setup. | Section skeleton. | Problem cards tied to prototype examples. | One example unavailable. | No examples, show thesis summary. | Some examples visible. |
-| Evals | Show how quality would be measured. | Production AI needs measurement. | Run sample eval. | Metric skeleton or progress steps. | Metrics complete. | Eval failed with retry and preserved last results. | No eval runs, offer sample benchmark. | Some charts fail, metric cards remain. |
-| Onboarding/setup | Show repeatability of new customer setup. | Customer onboarding is part of the hard problem. | View setup checklist. | Step skeleton. | Catalog, mapping, rules, baseline, readiness steps visible. | Setup import failed with recovery. | No setup yet, offer sample setup. | Some setup steps complete, others blocked. |
+| Engineering thesis | Explain production problems as a guided walkthrough, not a long essay. | Extraction, normalization, matching, confidence, evals, traceability, onboarding, all grounded in real published research and real production examples, not invented claims. | Next / Back through 7 slides, ending in a link to setup and a references list. | n/a, static per-slide content, no async data. | Reviewer can step through all 7 slides; the matching, confidence, and evals slides are interactive (toggle search modes, drag a review threshold, toggle every-run vs grouped-patterns). | n/a, nothing in this walkthrough depends on a network call. | n/a, all 7 slides always render. | n/a. |
+| Onboarding/setup | Show repeatability of new customer setup, as its own dedicated route. | Customer onboarding is part of the hard problem; matching only works once a catalog is connected. | Next / Back through 6 steps (Connect catalog, Map fields, Customer names, Rules and thresholds, Baseline check, Ready to go live), ending in "Finish setup." | n/a, static per-step content. | All 6 steps render; choices made in "Rules and thresholds" and whether "Baseline check" was run carry through honestly to the final readiness summary. | n/a, nothing in this walkthrough depends on a network call. | n/a, all 6 steps always render. | Reviewer can jump back to any earlier step via the step chips without losing progress on later steps. |
 | Candidate proof | Connect Harsh's relevant work to Comena needs. | Product proof is backed by selective candidate evidence. | Open relevant project link. | Card skeleton. | Proof cards render. | Link missing or unavailable with fallback. | No approved links, keep section compact. | Some links missing, proof copy remains. |
 | Contact / Next step | Make the next step obvious. | The project asks for an internship conversation. | Call or email. | Link check spinner only if needed. | Contact/project links available. | Calendar unavailable, show email fallback. | No calendar selected, use email. | Some links unavailable, contact path still works. |
 
@@ -53,17 +51,25 @@ The state plan uses the current blue-first light/dark design system plus the UX 
 The P1 walkthrough should work in this order:
 
 1. Opening.
-2. What I learned.
-3. Problem orientation.
-4. Workflow diagram.
-5. Order intake.
-6. Processing.
-7. Summary.
-8. Sent confirmation.
-9. Waiting queue.
-10. Evals.
+2. Problem orientation.
+3. Workflow diagram.
+4. Order intake.
+5. Processing.
+6. Summary.
+7. Sent confirmation.
+8. Waiting queue.
+9. Engineering thesis ("How it works" walkthrough).
+10. Onboarding/setup, reached from the sent-confirmation screen or from the end of the thesis walkthrough.
 
 The reviewer should also be able to skip directly from opening to the prototype's problem orientation.
+
+## Scope Notes (Phase 6 reality check)
+
+Written after Phase 6 shipped, to keep this table honest:
+
+- **"What I learned" is gone.** The standalone section (and its component) was removed. Its intent, orienting a reviewer on the workflow before going deeper, is now the first slide of the "How it works" walkthrough instead of a separate section.
+- **"Evals" is not a standalone section.** It never became a metrics dashboard. It is one slide inside the Engineering thesis walkthrough, demonstrating the grouping method (every run vs. grouped into patterns) rather than showing invented accuracy numbers.
+- **Onboarding/setup exceeded the original plan.** Rather than a compact section, it is a full 6-step page, linked both from the guided prototype flow and from the thesis walkthrough.
 
 ## State Coverage Rules
 

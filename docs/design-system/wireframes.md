@@ -170,44 +170,51 @@ Rules:
 
 ## Evals
 
+Superseded: the metric-dashboard layout below was the original plan, but was deliberately not built. A live-updating numeric dashboard (accuracy percentages, recall, correction rate) would be fake data dressed up as fact, since there is no backend computing it yet. Real product decision, not a shortcut: showing invented precision numbers is worse than not showing them.
+
+What was built instead is one slide inside the "How it works" walkthrough (`/thesis`, step 5, "Keeping it honest"), demonstrating the *method* rather than a fake result:
+
 ```text
 +----------------------------------------------------------------------+
-| Quality and evals                                                    |
-+--------------+--------------+--------------+------------------------+
-| Extraction   | SKU top-1    | SKU top-3    | False confident matches|
-| accuracy     | accuracy     | recall       |                        |
-+--------------+--------------+--------------+------------------------+
-| Exception category breakdown                                         |
-| Human correction rate | Auto-approval rate | Estimated time saved    |
-| [Run sample eval] [Open failed cases] [View top-3 recall examples]   |
+| Keeping it honest                                                     |
+| Prove it keeps working, not just that it worked once.                |
+|                                                                        |
+| [Every run] [Grouped into patterns]                                  |
+|                                                                        |
+| Every run:       12 tiles, pass/fail per run                          |
+| Grouped view:     Near-neighbor bearing picks     3 runs               |
+|                    Missing unit on motor lines     2 runs               |
+|                    Price below catalog             1 run                |
 +----------------------------------------------------------------------+
 ```
 
 Rules:
 
-- Eval metrics must connect to visible sample cases.
-- No eval state must offer a sample benchmark.
-- Failed chart state must not hide metric cards.
-- Drill-down links reveal the sample lines behind the metric.
+- No invented accuracy percentages. The demo shows the grouping *method* (many individual pass/fail runs collapse into a few recurring patterns), not a fabricated score.
+- The toggle between "every run" and "grouped into patterns" is the whole point: it demonstrates why population-level grouping beats reading one run at a time once there is real volume.
+- Copy is upfront about the limit: this needs a real population of runs before patterns mean anything, so it is a later-phase capability, not day one.
+- Grounded in real published sources (BERTopic clustering, OpenAI's macro-evals cookbook), listed on a references slide at the end of the walkthrough, not asserted as an OrderMatch Lab invention.
 
 ## Onboarding And Setup
 
+Built as its own dedicated route (`/prototype/setup`), not a compact section. A 6-step click-through stepper, linked from the end of the guided order flow ("Set this up for your own catalog" on the sent-confirmation screen) and from the "How it works" walkthrough's last content slide:
+
 ```text
 +----------------------------------------------------------------------+
-| Repeatable setup                                                     |
-+--------------+--------------+--------------+------------------------+
-| Catalog      | Field map    | Rules        | Eval baseline          |
-| imported     | mapped       | configured   | created                |
-+--------------+--------------+--------------+------------------------+
-| Setup readiness checklist: ERP fields, units, customer aliases,      |
-| blocked categories, approval thresholds                              |
+| Setting up a new customer                          [Sample walkthrough]|
+| (1) Connect catalog  (2) Map fields  (3) Customer names               |
+| (4) Rules and thresholds  (5) Baseline check  (6) Ready to go live    |
++----------------------------------------------------------------------+
+| Connect catalog: spreadsheet / ERP feed / product database cards,     |
+| explicit "nothing uploads, nothing leaves your browser" disclosure    |
 +----------------------------------------------------------------------+
 ```
 
 Rules:
 
-- Setup proves onboarding repeatability.
-- It should be compact in v0 but visible enough to support the thesis.
+- Setup proves onboarding repeatability, illustrated end to end rather than compressed into a summary card.
+- Every interactive control in step 1 (catalog source cards) is explicitly labeled as illustrative so a reviewer does not think a real upload is happening.
+- The final "Rules and thresholds" and "Baseline check" values a reviewer sets are carried through to the "Ready to go live" summary, so the summary reflects what was actually chosen, not fixed placeholder numbers.
 
 ## Candidate Proof
 

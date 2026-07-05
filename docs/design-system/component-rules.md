@@ -71,7 +71,9 @@ Suggested status set:
 - Stale
 - Failed
 
-Confidence bands:
+Confidence bands (superseded, decision made in Phase 6): the plan below was a 4-badge system (High confidence / Review needed / Blocked / No match) shown persistently on every matched line. This was deliberately not built. Reasoning: the live prototype already has a human in the loop on every uncertain line, so a separate confidence badge next to a decision the reviewer is about to make anyway is redundant, not added trust. The live product screens instead use the simpler binary status already documented below ("Matched" / "Confirmed" / "Needs a decision"). The 4-band concept survives only as an interactive teaching moment: the "How it works" walkthrough's confidence slide lets a reviewer drag a review threshold and watch lines move between auto-approved and sent-to-review, including a case where a risk flag overrides a decent score. That is a one-time illustration, not a persistent UI element.
+
+Original (not built) badge text for reference:
 
 - High confidence: safe to inspect and accept
 - Review needed: plausible match, human should check

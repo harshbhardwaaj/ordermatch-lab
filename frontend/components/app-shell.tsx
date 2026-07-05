@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
 import { icons } from "@/lib/icons";
@@ -30,47 +31,6 @@ function syncNavOpenAttribute(isOpen: boolean) {
   localStorage.setItem(NAV_STORAGE_KEY, String(isOpen));
 }
 
-function OrderMatchMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-12"
-      fill="none"
-      viewBox="0 0 48 48"
-    >
-      <circle cx="24" cy="24" r="20" fill="var(--om-accent)" />
-      <circle cx="18" cy="18" r="4" fill="var(--om-accent-text)" />
-      <circle
-        cx="30"
-        cy="18"
-        fill="var(--om-accent-text)"
-        opacity="0.72"
-        r="4"
-      />
-      <circle
-        cx="18"
-        cy="30"
-        fill="var(--om-accent-text)"
-        opacity="0.72"
-        r="4"
-      />
-      <path
-        d="M22 28 30.5 19.5"
-        stroke="var(--om-bg)"
-        strokeLinecap="round"
-        strokeWidth="3.2"
-      />
-      <path
-        d="m27 29.5 3.4 3.2L37 25"
-        stroke="var(--om-accent-text)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
-    </svg>
-  );
-}
-
 export function AppShell({
   children,
   className,
@@ -94,17 +54,6 @@ export function AppShell({
       return;
     }
 
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target;
-
-      if (target instanceof Node && navRef.current?.contains(target)) {
-        return;
-      }
-
-      syncNavOpenAttribute(false);
-      setIsNavOpen(false);
-    }
-
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         syncNavOpenAttribute(false);
@@ -112,11 +61,9 @@ export function AppShell({
       }
     }
 
-    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isNavOpen, showNavigation]);
@@ -153,7 +100,7 @@ export function AppShell({
               className="flex h-12 items-center gap-4 rounded-full text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
             >
               <span className="flex size-12 shrink-0 items-center justify-center">
-                <OrderMatchMark />
+                <BrandMark className="size-12" />
               </span>
               <span
                 className={cn(
