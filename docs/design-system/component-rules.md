@@ -118,7 +118,10 @@ Use the current left rail navigation after the opening screen:
 - subtle sidebar toggle
 - Start
 - What I built
+  - Prototype
+  - Setup
 - How it works
+  - Overview, Reading the order, Matching, Knowing when to trust it, Keeping it honest, Making it real, References (one per thesis slide)
 - Why me
 - Next step
 - theme toggle at the bottom
@@ -132,6 +135,9 @@ Rail behavior:
 - collapsed state shows icons only
 - expanded state shows icon plus label
 - expansion uses the sidebar toggle, not hover
+- sub-items (Phase 7) render only under whichever top-level item is currently active, and only while the rail is expanded; every other section stays flat, so the rail never shows more than one open group at a time
+- the "How it works" sub-items deep-link into a specific thesis slide via `/thesis?step=N`, since all 7 slides live on one route rather than separate pages
+- "Prototype" and "Setup" sub-items highlight individually based on the exact path; the 7 thesis sub-items do not get individual highlighting, since the URL alone cannot distinguish which slide is open
 - outside click and `Esc` collapse the rail
 - expanded rail pushes content over instead of covering it
 - initial open/closed preference is applied before paint to avoid layout flash

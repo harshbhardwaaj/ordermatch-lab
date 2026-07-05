@@ -129,12 +129,12 @@
 
 **Independent Test**: A reviewer can reach the prototype from the first screen in one action and can also complete the guided story without feeling trapped.
 
-- [ ] T060 [US5] Add section navigation with current-section awareness.
-- [ ] T061 [US5] Add jump links for prototype, evals, onboarding/setup, candidate proof, and final CTA.
-- [ ] T062 [US5] Make prototype entry and exit paths obvious.
-- [ ] T063 [US5] Preserve understandable UI state when navigating between narrative and prototype sections.
-- [ ] T064 [US5] Add compact mobile navigation that avoids hiding primary actions.
-- [ ] T065 [US5] Run a 3-minute guided walkthrough test and record whether the reviewer can reach prototype, trust model, candidate proof, and CTA without explanation.
+- [x] T060 [US5] Add section navigation with current-section awareness. `app-shell.tsx` highlights the active top-level nav item, and since this session also highlights the active child sub-item where the URL alone can tell which one is active (Prototype vs. Setup); the 7 thesis sub-links share one route so they render as plain jump links without individual highlighting.
+- [x] T061 [US5] Add jump links for prototype, evals, onboarding/setup, candidate proof, and final CTA. "What I built" now splits into Prototype/Setup sub-links, and "How it works" lists all 7 thesis steps as sub-links (including evals), each deep-linking to `/thesis?step=N`. Sub-items only render for the currently active top-level section, collapsing everywhere else, so the rail does not get cluttered. Candidate proof (`/proof`) and final CTA (`/contact`) were already reachable as flat top-level items, no change needed there.
+- [x] T062 [US5] Make prototype entry and exit paths obvious. Satisfied by the existing guided flow's single-CTA screens (see the T065 walkthrough notes).
+- [x] T063 [US5] Preserve understandable UI state when navigating between narrative and prototype sections. Done via `lib/processing-state.ts`.
+- [x] T064 [US5] Add compact mobile navigation that avoids hiding primary actions. The existing `details`/`summary` mobile header now mirrors the same sub-section accordion as the desktop rail.
+- [x] T065 [US5] Run a 3-minute guided walkthrough test and record whether the reviewer can reach prototype, trust model, candidate proof, and CTA without explanation. AI self-review walked the full 10-step method and recorded findings in `docs/qa/v0-reviewer-walkthrough-notes.md`. Passed on concept coverage, hook chain, and nav skip-ability. Flags two real gaps out of this phase's scope (`/proof` and `/contact` still placeholders, Phase 8/9) and recommends a real human pass before this is treated as fully closed, same pattern as T039's self-review.
 
 **Checkpoint**: US5 complete. The app works for both quick scanners and guided readers.
 
