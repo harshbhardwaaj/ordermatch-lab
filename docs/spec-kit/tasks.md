@@ -146,16 +146,16 @@
 
 **Independent Test**: A reviewer can connect each candidate proof item to a capability Comena likely values.
 
-- [ ] T066 [US6] Select final candidate proof points from `docs/story-bank-harsh.md`.
-- [ ] T067 [US6] Write concise candidate proof copy for ALEVOR AI classification.
-- [ ] T068 [US6] Write concise candidate proof copy for AI Investment Analyst.
-- [ ] T069 [US6] Write concise candidate proof copy for CV-JD Fit Scorer.
-- [ ] T070 [US6] Write concise education/coursework proof tied to AI/data/product engineering.
-- [ ] T071 [US6] Decide whether the Bomberman Java project is useful enough to include.
-- [ ] T072 [US6] Build candidate proof cards with links, metrics, Comena-relevant capability labels, and concise proof-to-product mapping.
-- [ ] T073 [US6] Add supporting links for relevant projects.
-- [ ] T074 [US6] Add candidate section empty/error states for missing links, unavailable project links, or resume placeholder.
-- [ ] T075 [US6] Run copy against `docs/story-bank-harsh.md` writing rules, including banned words, no grade leakage, no fake claims, no em dashes, and no overclaiming.
+- [x] T066 [US6] Select final candidate proof points from `docs/story-bank-harsh.md`. Selected: ALEVOR AI classification, AI Investment Analyst, CV-JD Fit Scorer, and TUM coursework (including Python for Engineering and Data Analysis, in progress, exam this semester, added directly by Harsh rather than pulled from the story bank).
+- [x] T067 [US6] Write concise candidate proof copy for ALEVOR AI classification.
+- [x] T068 [US6] Write concise candidate proof copy for AI Investment Analyst.
+- [x] T069 [US6] Write concise candidate proof copy for CV-JD Fit Scorer.
+- [x] T070 [US6] Write concise education/coursework proof tied to AI/data/product engineering.
+- [x] T071 [US6] Decide whether the Bomberman Java project is useful enough to include. Decided: dropped. Not AI/data-specific enough next to the other three, and the page is meant to stay short.
+- [x] T072 [US6] Build candidate proof cards with links, metrics, Comena-relevant capability labels, and concise proof-to-product mapping. Built as `components/narrative/candidate-proof.tsx`, replacing the generic `RouteShell` placeholder at `/proof`. Went through a bento-grid draft first, then switched to a scroll-triggered vertical timeline per Harsh's request: each of the 4 proof points (ALEVOR, AI Investment Analyst, CV-JD Fit Scorer, TUM Coursework) is a numbered stop on a vertical line, revealing with a fade/slide-up animation via `IntersectionObserver` as the reader scrolls to it, no buttons needed. Respects `prefers-reduced-motion` (content shows immediately, no animation) and falls back to showing content immediately if `IntersectionObserver` is unavailable. Each stop leads with the actual project name as its title (not an achievement sentence or the capability label), tagged with what kind of proof it is (work project, personal project, coursework) and a small "Comena-relevant skill" pill, so a first-time reader immediately understands whose project it is and why it is here. Opens with one line naming OrderMatch Lab itself as the strongest proof already seen, linking back to `/prototype` and `/thesis`, rather than repeating it as a fifth stop.
+- [x] T073 [US6] Add supporting links for relevant projects. AI Investment Analyst links to its live Vercel deployment and GitHub repo, and CV-JD Fit Scorer links to its live Streamlit deployment, all confirmed reachable. Its initial redirect through a login-looking screen turned out to just be Streamlit Community Cloud waking a sleeping free-tier app, not a real access issue, confirmed with Harsh. ALEVOR intentionally has no clickable link, see T074.
+- [x] T074 [US6] Add candidate section empty/error states for missing links, unavailable project links, or resume placeholder. Two link states built: `live` (working external link) and `none` (ALEVOR has no public link since it lives inside another company's internal systems). An `unavailable` state also exists in the component for a genuinely broken link, unused for now since all current live links resolve.
+- [x] T075 [US6] Run copy against `docs/story-bank-harsh.md` writing rules, including banned words, no grade leakage, no fake claims, no em dashes, and no overclaiming. Checked against both the story bank's banned-word list and `docs/design-system/copy-principles.md`. No grades mentioned, Python for Engineering and Data Analysis is explicitly framed as in progress rather than completed.
 
 **Checkpoint**: US6 complete. Candidate section supports the product and does not overpower it.
 

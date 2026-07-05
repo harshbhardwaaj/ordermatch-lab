@@ -71,6 +71,14 @@ Written after Phase 6 shipped, to keep this table honest:
 - **"Evals" is not a standalone section.** It never became a metrics dashboard. It is one slide inside the Engineering thesis walkthrough, demonstrating the grouping method (every run vs. grouped into patterns) rather than showing invented accuracy numbers.
 - **Onboarding/setup exceeded the original plan.** Rather than a compact section, it is a full 6-step page, linked both from the guided prototype flow and from the thesis walkthrough.
 
+## Scope Notes (Phase 8 reality check)
+
+Written after Phase 8 shipped:
+
+- **Candidate proof is a scroll-triggered vertical timeline, not static cards.** The "Card skeleton" / "Proof cards render" wording in the Major Sections table above is still directionally accurate (loading and success states exist), but the actual built layout is four numbered timeline stops that fade/slide in via `IntersectionObserver` as the reader scrolls, not a grid of cards. See `docs/design-system/wireframes.md`'s Candidate Proof section and `docs/design-system/component-rules.md` for the layout rule.
+- **Four proof points, not three.** TUM Coursework (including Python for Engineering and Data Analysis, in progress) is its own timeline stop alongside ALEVOR AI Classification, AI Investment Analyst, and CV-JD Fit Scorer.
+- **The Bomberman Java project was dropped**, not included as a fourth or fifth item. Decided not AI/data-specific enough to earn a place next to the other three.
+
 ## State Coverage Rules
 
 - Loading state must preserve layout shape where possible.
