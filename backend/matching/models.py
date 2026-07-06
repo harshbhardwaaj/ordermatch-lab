@@ -42,11 +42,22 @@ class MatchCandidate(models.Model):
 
 
 class MatchDecision(models.Model):
-    """Mirrors frontend/types/match.ts MatchDecision."""
+    """Mirrors frontend/types/match.ts MatchDecision, extended with
+    custom_label (T107): the real resolve-or-defer picker
+    (frontend/components/product/match-pick-list.tsx) also supports a
+    free-text "type the correct match" override with no real candidate at
+    all (resolveWithCustomAnswer in order-processing.tsx / order-summary.tsx),
+    so candidate must be nullable to record that path.
+    """
 
     candidate = models.ForeignKey(
-        MatchCandidate, related_name="decisions", on_delete=models.CASCADE
+        MatchCandidate,
+        related_name="decisions",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
     )
+    custom_label = models.CharField(max_length=255, blank=True)
     line_item = models.ForeignKey(
         "orders.OrderLineItem", related_name="decisions", on_delete=models.CASCADE
     )

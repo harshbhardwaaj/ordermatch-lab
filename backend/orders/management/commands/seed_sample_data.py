@@ -9,6 +9,7 @@ from django.utils import timezone as django_timezone
 from catalogs.models import CatalogItem
 from evals.models import EvalFailureCase, EvalMetric, EvalRun
 from matching.models import MatchCandidate
+from onboarding.models import SetupConfiguration
 from orders.models import OrderException, OrderLineItem, OrderRecord, ReadinessCheck
 
 SEED_DIR = Path(__file__).resolve().parent.parent.parent.parent / "seed_data"
@@ -40,6 +41,7 @@ class Command(BaseCommand):
         self._seed_catalog_items()
         self._seed_orders()
         self._seed_eval_runs()
+        self._seed_setup_configuration()
         self.stdout.write(self.style.SUCCESS("Seed data loaded."))
 
     def _seed_catalog_items(self):
@@ -77,6 +79,7 @@ class Command(BaseCommand):
             record, _ = OrderRecord.objects.update_or_create(
                 id=order["id"],
                 defaults={
+                    "order_number": header.get("orderId", ""),
                     "customer_name": header["customerName"],
                     "customer_reference": header.get("customerReference", ""),
                     "source": header["source"],
@@ -214,3 +217,21 @@ class Command(BaseCommand):
                     severity=failure["severity"],
                 )
         self.stdout.write(f"  eval runs: {len(runs)}")
+
+    def _seed_setup_configuration(self):
+        # One row for the whole demo (no multi-tenant customer onboarding),
+        # matching the real defaults in
+        # frontend/components/onboarding/setup-flow.tsx: autoApproveThreshold
+        # (85), priceFlagThreshold (15), and the three RULE_TOGGLES entries
+        # (discontinued, noncatalog, duplicate), all defaultOn: true.
+        SetupConfiguration.objects.get_or_create(
+            id=1,
+            defaults={
+                "auto_approve_threshold": 85,
+                "price_flag_threshold": 15,
+                "stop_discontinued_items": True,
+                "review_noncatalog_items": True,
+                "flag_duplicate_lines": True,
+            },
+        )
+        self.stdout.write("  setup configuration: 1")

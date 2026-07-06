@@ -124,22 +124,6 @@ class MatchDecisionKind(models.TextChoices):
     DEFERRED = "deferred", "deferred"
 
 
-class OnboardingStepStatus(models.TextChoices):
-    NOT_STARTED = "not-started", "not-started"
-    IN_PROGRESS = "in-progress", "in-progress"
-    COMPLETE = "complete", "complete"
-    BLOCKED = "blocked", "blocked"
-    REQUIRES_REVIEW = "requires-review", "requires-review"
-
-
-class OnboardingStepKey(models.TextChoices):
-    CATALOG_INGESTION = "catalog-ingestion", "catalog-ingestion"
-    FIELD_MAPPING = "field-mapping", "field-mapping"
-    CUSTOMER_RULES = "customer-rules", "customer-rules"
-    EVAL_BASELINE = "eval-baseline", "eval-baseline"
-    READINESS_CHECKS = "readiness-checks", "readiness-checks"
-
-
 class EvalRunStatus(models.TextChoices):
     NOT_STARTED = "not-started", "not-started"
     QUEUED = "queued", "queued"

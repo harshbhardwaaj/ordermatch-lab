@@ -1,17 +1,5 @@
-import { catalogItems } from "@/data/catalog";
-import {
-  primaryWalkthroughOrderId,
-  sampleOrders,
-  type SyntheticOrderRecord,
-} from "@/data/orders";
-
-export function getOrderById(orderId: string | undefined) {
-  return (
-    sampleOrders.find((order) => order.id === orderId) ??
-    sampleOrders.find((order) => order.id === primaryWalkthroughOrderId) ??
-    sampleOrders[0]
-  );
-}
+import { getCachedCatalogItemById } from "@/lib/api";
+import type { SyntheticOrderRecord } from "@/data/orders";
 
 export function getOrderProcessingHref(orderId: string) {
   return `/prototype/processing/${orderId}`;
@@ -32,9 +20,13 @@ export function getLineCandidates(order: SyntheticOrderRecord, lineItemId: strin
 }
 
 export function getCatalogItemById(catalogItemId: string | undefined) {
-  return catalogItems.find((item) => item.id === catalogItemId);
+  return getCachedCatalogItemById(catalogItemId);
 }
 
-export function getOtherSampleOrders(orderId: string, limit = 3) {
-  return sampleOrders.filter((order) => order.id !== orderId).slice(0, limit);
+export function getOtherOrders(
+  orders: SyntheticOrderRecord[],
+  orderId: string,
+  limit = 3,
+) {
+  return orders.filter((order) => order.id !== orderId).slice(0, limit);
 }

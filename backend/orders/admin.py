@@ -20,7 +20,7 @@ class ReadinessCheckInline(admin.TabularInline):
 
 @admin.register(OrderRecord)
 class OrderRecordAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer_name", "status", "source", "is_simulated")
+    list_display = ("id", "order_number", "customer_name", "status", "source", "is_simulated")
     list_filter = ("status", "source", "is_simulated")
-    search_fields = ("id", "customer_name", "customer_reference")
+    search_fields = ("id", "order_number", "customer_name", "customer_reference")
     inlines = [OrderLineItemInline, OrderExceptionInline, ReadinessCheckInline]

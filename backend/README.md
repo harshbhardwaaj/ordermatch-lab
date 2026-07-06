@@ -52,7 +52,7 @@ All under `/api/`:
 - `GET /api/orders/` — order list (light shape)
 - `GET /api/orders/<id>/` — order detail, with nested line items, exceptions, readiness checks, and match candidates
 - `GET /api/catalog-items/`, `GET /api/catalog-items/<id>/`
-- `GET /api/onboarding-setups/`, `GET /api/onboarding-setups/<id>/`
+- `GET /api/setup-configuration/`, `GET /api/setup-configuration/<id>/` — the single real setup configuration row (auto-approve threshold, price-flag threshold, rule toggles), not a per-customer onboarding wizard
 - `GET /api/eval-runs/`, `GET /api/eval-runs/<id>/`
 
 All read-only for now. Write endpoints (accept/reject a match, resolve an

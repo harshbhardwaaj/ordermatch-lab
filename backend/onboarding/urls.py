@@ -1,8 +1,8 @@
 from rest_framework.routers import DefaultRouter
 
-from .views import OnboardingSetupViewSet
+from .views import SetupConfigurationViewSet
 
 router = DefaultRouter()
-router.register("onboarding-setups", OnboardingSetupViewSet, basename="onboarding-setup")
+router.register("setup-configuration", SetupConfigurationViewSet, basename="setup-configuration")
 
 urlpatterns = router.urls

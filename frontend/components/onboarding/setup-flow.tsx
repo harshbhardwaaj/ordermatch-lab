@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -16,7 +16,17 @@ import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { LabeledRangeSlider } from "@/components/ui/labeled-range-slider";
 import { TransitionLink } from "@/components/view-transition-link";
+import { catalogItems } from "@/data/catalog";
+import {
+  fetchSetupConfiguration,
+  updateSetupConfiguration,
+  type SetupConfiguration,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+const SAVE_DEBOUNCE_MS = 500;
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type SetupPanelProps = {
   autoApproveThreshold: number;
@@ -27,6 +37,7 @@ type SetupPanelProps = {
   onRuleToggleChange: (id: string, value: boolean) => void;
   baselineRan: boolean;
   onBaselineRanChange: (value: boolean) => void;
+  saveStatus: SaveStatus;
 };
 
 /* Step 1: connect catalog ------------------------------------------ */
@@ -71,7 +82,9 @@ function ConnectCatalogPanel() {
       })}
       <div className="flex items-center gap-2 rounded-lg border border-[rgba(var(--om-success-rgb),0.35)] bg-[rgba(var(--om-success-rgb),0.06)] px-4 py-3 text-sm">
         <Check aria-hidden="true" className="size-4 shrink-0 text-[var(--om-success)]" />
-        <span className="text-[var(--om-text)]">Sample catalog loaded. 62 items ready to match.</span>
+        <span className="text-[var(--om-text)]">
+          Sample catalog loaded. {catalogItems.length} items ready to match.
+        </span>
       </div>
     </div>
   );
@@ -153,6 +166,7 @@ function RulesPanel({
   onPriceFlagThresholdChange,
   ruleToggles,
   onRuleToggleChange,
+  saveStatus,
 }: SetupPanelProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -176,6 +190,19 @@ function RulesPanel({
           />
         </div>
       </div>
+
+      <p
+        aria-live="polite"
+        className="text-xs font-medium text-[var(--om-muted)]"
+      >
+        {saveStatus === "saving"
+          ? "Saving..."
+          : saveStatus === "saved"
+            ? "Saved. These thresholds now gate real order routing."
+            : saveStatus === "error"
+              ? "Could not save. The backend may be offline."
+              : null}
+      </p>
 
       <div className="flex flex-col gap-2">
         {RULE_TOGGLES.map((rule) => {
@@ -266,7 +293,7 @@ function BaselinePanel({ baselineRan, onBaselineRanChange }: SetupPanelProps) {
 
 function ReadinessPanel({ autoApproveThreshold, baselineRan }: SetupPanelProps) {
   const items = [
-    { label: "Catalog connected", detail: "62 items", complete: true },
+    { label: "Catalog connected", detail: `${catalogItems.length} items`, complete: true },
     { label: "Fields mapped", detail: "5 fields", complete: true },
     { label: "Customer names loaded", detail: "4 aliases", complete: true },
     { label: "Rules and thresholds set", detail: `${autoApproveThreshold}% auto-approve`, complete: true },
@@ -363,15 +390,79 @@ const STEPS: Step[] = [
 
 /* Shell ------------------------------------------------------------ */
 
+type ConfigLoadState = "loading" | "error" | "ready";
+
 export function SetupFlow() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
+  const [configId, setConfigId] = useState<number | null>(null);
+  const [configLoadState, setConfigLoadState] = useState<ConfigLoadState>("loading");
   const [autoApproveThreshold, setAutoApproveThreshold] = useState(85);
   const [priceFlagThreshold, setPriceFlagThreshold] = useState(15);
   const [ruleToggles, setRuleToggles] = useState<Record<string, boolean>>(
     Object.fromEntries(RULE_TOGGLES.map((rule) => [rule.id, rule.defaultOn])),
   );
   const [baselineRan, setBaselineRan] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [retryKey, setRetryKey] = useState(0);
+  const hasLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setConfigLoadState("loading");
+    fetchSetupConfiguration()
+      .then((config: SetupConfiguration) => {
+        if (cancelled) return;
+        setConfigId(config.id);
+        setAutoApproveThreshold(config.autoApproveThreshold);
+        setPriceFlagThreshold(config.priceFlagThreshold);
+        setRuleToggles({
+          discontinued: config.stopDiscontinuedItems,
+          noncatalog: config.reviewNoncatalogItems,
+          duplicate: config.flagDuplicateLines,
+        });
+        setConfigLoadState("ready");
+        // Defer marking "loaded" past this render so the effect below
+        // doesn't immediately re-save the values it just set.
+        setTimeout(() => {
+          hasLoadedRef.current = true;
+        }, 0);
+      })
+      .catch(() => {
+        if (!cancelled) setConfigLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [retryKey]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || configId === null) {
+      return;
+    }
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    setSaveStatus("saving");
+    saveTimeoutRef.current = setTimeout(() => {
+      updateSetupConfiguration(configId, {
+        autoApproveThreshold,
+        priceFlagThreshold,
+        stopDiscontinuedItems: ruleToggles.discontinued,
+        reviewNoncatalogItems: ruleToggles.noncatalog,
+        flagDuplicateLines: ruleToggles.duplicate,
+      })
+        .then(() => setSaveStatus("saved"))
+        .catch(() => setSaveStatus("error"));
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [autoApproveThreshold, priceFlagThreshold, ruleToggles, configId]);
 
   const current = STEPS[step];
   const Panel = current.Panel;
@@ -386,7 +477,44 @@ export function SetupFlow() {
     onRuleToggleChange: (id, value) => setRuleToggles((prev) => ({ ...prev, [id]: value })),
     baselineRan,
     onBaselineRanChange: setBaselineRan,
+    saveStatus,
   };
+
+  if (configLoadState === "loading") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
+        >
+          <div className="h-8 w-64 animate-pulse rounded bg-[var(--om-surface-2)]" />
+        </main>
+      </AppShell>
+    );
+  }
+
+  if (configLoadState === "error") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
+        >
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">
+            <p>Could not load setup configuration. The backend may be offline.</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetryKey((key) => key + 1)}
+              className="h-9 border-amber-300 bg-white px-4 text-xs text-amber-800 hover:bg-amber-100"
+            >
+              Try again
+            </Button>
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
 
   if (done) {
     return (

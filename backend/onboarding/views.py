@@ -1,15 +1,20 @@
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 
-from .models import OnboardingSetup
-from .serializers import OnboardingSetupSerializer
+from .models import SetupConfiguration
+from .serializers import SetupConfigurationSerializer
 
 
-class OnboardingSetupViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only for this scaffold phase (T100). Updating setup config
-    (auto-approve threshold, price-flag threshold, rule toggles) so it
-    actually gates routing is Phase 12/13 work (T110, T119).
+class SetupConfigurationViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """List/retrieve/update only (T110), no create/delete: this is a
+    singleton config for the whole demo (see SetupConfiguration's
+    docstring), not a per-customer resource. Read at match time (Phase
+    13, T119) to gate real order routing.
     """
 
-    queryset = OnboardingSetup.objects.all()
-    serializer_class = OnboardingSetupSerializer
-    lookup_field = "id"
+    queryset = SetupConfiguration.objects.all()
+    serializer_class = SetupConfigurationSerializer

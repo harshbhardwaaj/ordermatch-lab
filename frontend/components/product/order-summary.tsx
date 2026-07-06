@@ -7,90 +7,56 @@ import { AppShell } from "@/components/app-shell";
 import { MatchPickList } from "@/components/product/match-pick-list";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
+import type { SyntheticOrderRecord } from "@/data/orders";
 import { formatDate, formatOrderSource } from "@/lib/formatters";
+import { getLineCandidates, getWaitingQueueHref } from "@/lib/product-workflow";
 import {
-  getCatalogItemById,
-  getLineCandidates,
-  getOrderById,
-  getWaitingQueueHref,
-} from "@/lib/product-workflow";
-import {
-  getSentOrderIds,
-  loadProcessingResolutions,
-  markOrderSent,
-  saveProcessingResolutions,
-  type ProcessingResolutions,
-} from "@/lib/processing-state";
+  ApiError,
+  decideLineItem,
+  ensureCatalogItemsLoaded,
+  fetchOrder,
+  sendOrderToErp,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { MatchCandidate } from "@/types/match";
-import type { OrderLineItem } from "@/types/order";
-
-type SendState = "idle" | "sending" | "sent";
 
 function isLineClear(status: string) {
   return status === "matched";
 }
 
-function getLineDisplay(
-  order: ReturnType<typeof getOrderById>,
-  line: OrderLineItem,
-  resolutions: ProcessingResolutions,
-) {
-  if (isLineClear(line.status)) {
-    const candidate = order.matchCandidates.find(
-      (item) => item.id === line.selectedMatchCandidateId,
-    );
-    return {
-      status: "auto" as const,
-      displayName: line.normalizedName ?? line.originalText,
-      candidate,
-    };
-  }
-
-  const stored = resolutions[line.id];
-
-  if (stored?.state === "resolved") {
-    const candidate = stored.candidateId
-      ? order.matchCandidates.find((item) => item.id === stored.candidateId)
-      : undefined;
-    return {
-      status: "confirmed" as const,
-      displayName: stored.label ?? line.normalizedName ?? line.originalText,
-      candidate,
-    };
-  }
-
-  return {
-    status: "needs-decision" as const,
-    displayName: line.normalizedName ?? line.originalText,
-    candidate: undefined as MatchCandidate | undefined,
-  };
-}
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; order: SyntheticOrderRecord };
 
 export function OrderSummary({ orderId }: { orderId: string }) {
-  const order = getOrderById(orderId);
-
-  const [resolutions, setResolutions] = useState<ProcessingResolutions>({});
+  const [state, setState] = useState<LoadState>({ status: "loading" });
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
-  const [sendState, setSendState] = useState<SendState>("idle");
-  const [hasLoadedResolutions, setHasLoadedResolutions] = useState(false);
+  const [pendingLineId, setPendingLineId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    setResolutions(loadProcessingResolutions(order.id));
-    setHasLoadedResolutions(true);
-
-    if (getSentOrderIds().includes(order.id)) {
-      setSendState("sent");
-    }
-  }, [order.id]);
-
-  useEffect(() => {
-    if (!hasLoadedResolutions) {
-      return;
-    }
-    saveProcessingResolutions(order.id, resolutions);
-  }, [order.id, resolutions, hasLoadedResolutions]);
+    let cancelled = false;
+    setState({ status: "loading" });
+    Promise.all([ensureCatalogItemsLoaded(), fetchOrder(orderId)])
+      .then(([, order]) => {
+        if (cancelled) return;
+        setState({ status: "success", order });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof ApiError
+            ? error.detail
+            : "Could not load this order. The backend may be offline.";
+        setState({ status: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, retryKey]);
 
   function toggleExpanded(lineId: string) {
     setExpandedLines((prev) => {
@@ -104,42 +70,116 @@ export function OrderSummary({ orderId }: { orderId: string }) {
     });
   }
 
-  function resolveWithCandidate(lineId: string, candidate: MatchCandidate) {
-    setResolutions((prev) => ({
-      ...prev,
-      [lineId]: {
-        state: "resolved",
-        label: getCatalogItemById(candidate.catalogItemId)?.name ?? candidate.sku ?? "Selected match",
-        candidateId: candidate.id,
-      },
-    }));
+  function updateLineItem(lineId: string, patch: Partial<SyntheticOrderRecord["lineItems"][number]>) {
+    setState((prev) => {
+      if (prev.status !== "success") return prev;
+      return {
+        ...prev,
+        order: {
+          ...prev.order,
+          lineItems: prev.order.lineItems.map((li) => (li.id === lineId ? { ...li, ...patch } : li)),
+        },
+      };
+    });
   }
 
-  function resolveWithCustomAnswer(lineId: string) {
+  async function resolveWithCandidate(lineId: string, candidateId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await decideLineItem(lineId, { candidateId });
+      updateLineItem(lineId, updated);
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  async function resolveWithCustomAnswer(lineId: string) {
     const text = (customAnswers[lineId] ?? "").trim();
     if (!text) {
       return;
     }
-    setResolutions((prev) => ({ ...prev, [lineId]: { state: "resolved", label: text } }));
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await decideLineItem(lineId, { customLabel: text });
+      updateLineItem(lineId, updated);
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
+    } finally {
+      setPendingLineId(null);
+    }
   }
 
-  const lineDisplays = order.lineItems.map((line) => ({
-    line,
-    display: getLineDisplay(order, line, resolutions),
-  }));
+  async function handleSendToErp() {
+    if (state.status !== "success") return;
+    setActionError(null);
+    setSending(true);
+    try {
+      const updated = await sendOrderToErp(state.order.id);
+      setState({ status: "success", order: updated });
+    } catch (error) {
+      setActionError(
+        error instanceof ApiError ? error.detail : "Could not send this order to the ERP.",
+      );
+    } finally {
+      setSending(false);
+    }
+  }
 
-  const unresolvedCount = lineDisplays.filter(
-    ({ display }) => display.status === "needs-decision",
-  ).length;
+  if (state.status === "loading") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        >
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5">
+            <div className="h-6 w-40 animate-pulse rounded bg-[var(--om-surface-2)]" />
+            <div className="h-10 w-96 animate-pulse rounded bg-[var(--om-surface-2)]" />
+            <div className="h-64 animate-pulse rounded-lg bg-[var(--om-surface-2)]" />
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
 
-  const title =
-    sendState === "sent"
-      ? `${order.header.customerName}'s order has been sent.`
-      : unresolvedCount > 0
-        ? "A few things need a decision before this can be sent."
-        : `${order.header.customerName}'s order is ready for the ERP.`;
+  if (state.status === "error") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        >
+          <div className="mx-auto flex w-full max-w-2xl flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">
+            <p>{state.message}</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetryKey((key) => key + 1)}
+              className="h-9 border-amber-300 bg-white px-4 text-xs text-amber-800 hover:bg-amber-100"
+            >
+              Try again
+            </Button>
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
 
-  if (sendState === "sent") {
+  const { order } = state;
+  const sent = order.status === "erp-ready";
+  const unresolvedCount = order.lineItems.filter((line) => !isLineClear(line.status)).length;
+
+  const title = sent
+    ? `${order.header.customerName}'s order has been sent.`
+    : unresolvedCount > 0
+      ? "A few things need a decision before this can be sent."
+      : `${order.header.customerName}'s order is ready for the ERP.`;
+
+  if (sent) {
     return (
       <AppShell>
         <main
@@ -228,12 +268,23 @@ export function OrderSummary({ orderId }: { orderId: string }) {
             ) : null}
           </div>
 
+          {actionError ? (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {actionError}
+            </p>
+          ) : null}
+
           <div className="rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-5 shadow-sm">
-            {lineDisplays.map(({ line, display }, index) => {
-              const proofItems = display.candidate?.proofItems ?? [];
+            {order.lineItems.map((line, index) => {
+              const rowClear = isLineClear(line.status);
+              const originallyClear = rowClear && !line.resolvedByDecision;
+              const candidate = order.matchCandidates.find(
+                (item) => item.id === line.selectedMatchCandidateId,
+              );
+              const proofItems = candidate?.proofItems ?? [];
               const expanded = expandedLines.has(line.id);
-              const candidates = getLineCandidates(order, line.id).slice(0, 3);
-              const rowClear = display.status !== "needs-decision";
+              const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 3);
+              const isPending = pendingLineId === line.id;
 
               return (
                 <div
@@ -241,14 +292,14 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                   className={cn(
                     "py-4",
                     index === 0 ? "pt-0" : "",
-                    index === lineDisplays.length - 1 ? "pb-0" : "border-b border-[var(--om-border)]",
+                    index === order.lineItems.length - 1 ? "pb-0" : "border-b border-[var(--om-border)]",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-xs text-[var(--om-muted)]">{line.originalText}</p>
                       <p className="truncate text-sm font-semibold text-[var(--om-text)]">
-                        {display.displayName}
+                        {line.normalizedName ?? line.originalText}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -261,11 +312,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                         )}
                       >
                         {rowClear ? <Check className="size-3" /> : <AlertTriangle className="size-3" />}
-                        {display.status === "auto"
-                          ? "Matched"
-                          : display.status === "confirmed"
-                            ? "Confirmed"
-                            : "Needs a decision"}
+                        {originallyClear ? "Matched" : rowClear ? "Confirmed" : "Needs a decision"}
                       </span>
                       {proofItems.length > 0 ? (
                         <button
@@ -309,7 +356,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                     </div>
                   ) : null}
 
-                  {display.status === "needs-decision" ? (
+                  {!originallyClear && !rowClear ? (
                     <MatchPickList
                       candidates={candidates}
                       customValue={customAnswers[line.id] ?? ""}
@@ -317,13 +364,12 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                         setCustomAnswers((prev) => ({ ...prev, [line.id]: value }))
                       }
                       onCustomSubmit={() => resolveWithCustomAnswer(line.id)}
-                      onPick={(candidateId) => {
-                        const candidate = candidates.find((item) => item.id === candidateId);
-                        if (candidate) {
-                          resolveWithCandidate(line.id, candidate);
-                        }
-                      }}
+                      onPick={(candidateId) => resolveWithCandidate(line.id, candidateId)}
                     />
+                  ) : null}
+
+                  {isPending ? (
+                    <p className="mt-1 text-xs text-[var(--om-muted)]">Saving...</p>
                   ) : null}
                 </div>
               );
@@ -342,17 +388,11 @@ export function OrderSummary({ orderId }: { orderId: string }) {
             <div className="flex justify-center">
               <Button
                 type="button"
-                disabled={sendState === "sending"}
-                onClick={() => {
-                  setSendState("sending");
-                  setTimeout(() => {
-                    setSendState("sent");
-                    markOrderSent(order.id);
-                  }, 900);
-                }}
+                disabled={sending}
+                onClick={handleSendToErp}
                 className="h-11 bg-[var(--om-accent)] px-8 text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
               >
-                {sendState === "sending" ? "Sending to the ERP..." : "Send to ERP"}
+                {sending ? "Sending to the ERP..." : "Send to ERP"}
               </Button>
             </div>
           )}

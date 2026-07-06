@@ -8,16 +8,10 @@ import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
 import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/orders";
 import { formatOrderSource } from "@/lib/formatters";
-import { getOrderSummaryHref, getOtherSampleOrders } from "@/lib/product-workflow";
-import { getSentOrderIds } from "@/lib/processing-state";
-
-function isLineClear(status: string) {
-  return status === "matched";
-}
+import { ApiError, fetchOrders } from "@/lib/api";
+import { getOrderSummaryHref, getOtherOrders } from "@/lib/product-workflow";
 
 function WaitingOrderCard({ order }: { order: SyntheticOrderRecord }) {
-  const flaggedCount = order.lineItems.filter((line) => !isLineClear(line.status)).length;
-
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-4 shadow-sm">
       <div>
@@ -28,7 +22,7 @@ function WaitingOrderCard({ order }: { order: SyntheticOrderRecord }) {
       </div>
       <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-700">
         <AlertTriangle className="size-3.5" />
-        {flaggedCount} item{flaggedCount === 1 ? "" : "s"} need{flaggedCount === 1 ? "s" : ""} a decision
+        Needs a decision before it can go to the ERP
       </p>
       <Button
         asChild
@@ -40,18 +34,38 @@ function WaitingOrderCard({ order }: { order: SyntheticOrderRecord }) {
   );
 }
 
-export function OrderWaitingQueue() {
-  const candidateOrders = getOtherSampleOrders(primaryWalkthroughOrderId, 3).filter((order) =>
-    order.lineItems.some((line) => !isLineClear(line.status)),
-  );
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; orders: SyntheticOrderRecord[] };
 
-  const [sentOrderIds, setSentOrderIds] = useState<string[]>([]);
+export function OrderWaitingQueue() {
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    setSentOrderIds(getSentOrderIds());
-  }, []);
-
-  const orders = candidateOrders.filter((order) => !sentOrderIds.includes(order.id));
+    let cancelled = false;
+    setState({ status: "loading" });
+    fetchOrders()
+      .then((allOrders) => {
+        if (cancelled) return;
+        const orders = getOtherOrders(allOrders, primaryWalkthroughOrderId, 3).filter(
+          (order) => order.status !== "erp-ready",
+        );
+        setState({ status: "success", orders });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof ApiError
+            ? error.detail
+            : "Could not load orders. The backend may be offline.";
+        setState({ status: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [retryKey]);
 
   return (
     <AppShell>
@@ -73,9 +87,30 @@ export function OrderWaitingQueue() {
             </p>
           </div>
 
-          {orders.length > 0 ? (
+          {state.status === "loading" ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {orders.map((order) => (
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-32 animate-pulse rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)]"
+                />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+              <p>{state.message}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRetryKey((key) => key + 1)}
+                className="h-8 border-amber-300 bg-white px-3 text-xs text-amber-800 hover:bg-amber-100"
+              >
+                Try again
+              </Button>
+            </div>
+          ) : state.orders.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {state.orders.map((order) => (
                 <WaitingOrderCard key={order.id} order={order} />
               ))}
             </div>

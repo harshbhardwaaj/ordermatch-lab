@@ -9,19 +9,17 @@ import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
 import type { SyntheticOrderRecord } from "@/data/orders";
 import { formatDate, formatOrderSource } from "@/lib/formatters";
+import { getLineCandidates, getOrderSummaryHref, getOtherOrders } from "@/lib/product-workflow";
 import {
-  getCatalogItemById,
-  getLineCandidates,
-  getOrderById,
-  getOrderSummaryHref,
-  getOtherSampleOrders,
-} from "@/lib/product-workflow";
-import {
-  saveProcessingResolutions,
-  type ProcessingResolutions,
-} from "@/lib/processing-state";
+  ApiError,
+  decideLineItem,
+  deferLineItem,
+  ensureCatalogItemsLoaded,
+  fetchOrder,
+  fetchOrders,
+  reopenLineItem,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { MatchCandidate } from "@/types/match";
 
 const HEADER_REVEAL_DELAY_MS = 300;
 const LINE_REVEAL_INTERVAL_MS = 650;
@@ -58,7 +56,7 @@ function RailOrderCard({ order, index }: { order: SyntheticOrderRecord; index: n
     };
   }, [index]);
 
-  const flaggedCount = order.lineItems.filter((line) => !isLineClear(line.status)).length;
+  const ready = order.status === "erp-ready";
 
   return (
     <div className="rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-3">
@@ -67,7 +65,7 @@ function RailOrderCard({ order, index }: { order: SyntheticOrderRecord; index: n
       </p>
       <div className="mt-1.5 flex items-center gap-1.5 text-xs">
         {stage === "done" ? (
-          flaggedCount === 0 ? (
+          ready ? (
             <>
               <Check className="size-3 shrink-0 text-green-600" />
               <span className="text-green-700">Ready for ERP</span>
@@ -75,16 +73,14 @@ function RailOrderCard({ order, index }: { order: SyntheticOrderRecord; index: n
           ) : (
             <>
               <AlertTriangle className="size-3 shrink-0 text-amber-600" />
-              <span className="text-amber-700">
-                {flaggedCount} need{flaggedCount === 1 ? "s" : ""} review
-              </span>
+              <span className="text-amber-700">Needs review</span>
             </>
           )
         ) : (
           <>
             <span className="size-1.5 shrink-0 rounded-full bg-[var(--om-accent)] [animation:hero-dot_1.7s_ease-in-out_infinite]" />
             <span className="text-[var(--om-muted)]">
-              {stage === "reading" ? "Reading order" : `Matching ${order.lineItems.length} items`}
+              {stage === "reading" ? "Reading order" : "Matching items"}
             </span>
           </>
         )}
@@ -110,16 +106,49 @@ function AlsoProcessingRail({ orders }: { orders: SyntheticOrderRecord[] }) {
   );
 }
 
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; order: SyntheticOrderRecord; otherOrders: SyntheticOrderRecord[] };
+
 export function OrderProcessing({ orderId }: { orderId: string }) {
-  const order = getOrderById(orderId);
-  const otherOrders = getOtherSampleOrders(order.id);
-  const totalLines = order.lineItems.length;
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [deferredLineIds, setDeferredLineIds] = useState<Set<string>>(new Set());
+  const [pendingLineId, setPendingLineId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [headerRevealed, setHeaderRevealed] = useState(false);
   const [revealedLines, setRevealedLines] = useState(0);
   const [settled, setSettled] = useState(false);
-  const [resolutions, setResolutions] = useState<ProcessingResolutions>({});
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    Promise.all([ensureCatalogItemsLoaded(), fetchOrder(orderId), fetchOrders()])
+      .then(([, order, allOrders]) => {
+        if (cancelled) return;
+        setState({
+          status: "success",
+          order,
+          otherOrders: getOtherOrders(allOrders, order.id),
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof ApiError
+            ? error.detail
+            : "Could not load this order. The backend may be offline.";
+        setState({ status: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, retryKey]);
+
+  const totalLines = state.status === "success" ? state.order.lineItems.length : 0;
 
   useEffect(() => {
     const timer = setTimeout(() => setHeaderRevealed(true), HEADER_REVEAL_DELAY_MS);
@@ -127,11 +156,7 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
   }, []);
 
   useEffect(() => {
-    saveProcessingResolutions(order.id, resolutions);
-  }, [order.id, resolutions]);
-
-  useEffect(() => {
-    if (!headerRevealed || settled) {
+    if (state.status !== "success" || !headerRevealed || settled) {
       return;
     }
 
@@ -142,45 +167,135 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
 
     const timer = setTimeout(() => setRevealedLines((value) => value + 1), LINE_REVEAL_INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [headerRevealed, revealedLines, totalLines, settled]);
+  }, [state.status, headerRevealed, revealedLines, totalLines, settled]);
 
-  function resolveWithCandidate(lineId: string, candidate: MatchCandidate) {
-    setResolutions((prev) => ({
-      ...prev,
-      [lineId]: {
-        state: "resolved",
-        label: getCatalogItemById(candidate.catalogItemId)?.name ?? candidate.sku ?? "Selected match",
-        candidateId: candidate.id,
-      },
-    }));
+  function updateLineItem(lineId: string, patch: Partial<SyntheticOrderRecord["lineItems"][number]>) {
+    setState((prev) => {
+      if (prev.status !== "success") return prev;
+      return {
+        ...prev,
+        order: {
+          ...prev.order,
+          lineItems: prev.order.lineItems.map((li) => (li.id === lineId ? { ...li, ...patch } : li)),
+        },
+      };
+    });
   }
 
-  function resolveWithCustomAnswer(lineId: string) {
+  async function resolveWithCandidate(lineId: string, candidateId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await decideLineItem(lineId, { candidateId });
+      updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  async function resolveWithCustomAnswer(lineId: string) {
     const text = (customAnswers[lineId] ?? "").trim();
     if (!text) {
       return;
     }
-    setResolutions((prev) => ({ ...prev, [lineId]: { state: "resolved", label: text } }));
-  }
-
-  function deferLine(lineId: string) {
-    setResolutions((prev) => ({ ...prev, [lineId]: { state: "deferred" } }));
-  }
-
-  function reopenLine(lineId: string) {
-    setResolutions((prev) => {
-      const next = { ...prev };
-      delete next[lineId];
-      return next;
-    });
-  }
-
-  const unresolvedCount = order.lineItems.filter((line) => {
-    if (isLineClear(line.status)) {
-      return false;
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await decideLineItem(lineId, { customLabel: text });
+      updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
+    } finally {
+      setPendingLineId(null);
     }
-    return resolutions[line.id]?.state !== "resolved";
-  }).length;
+  }
+
+  async function deferLine(lineId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      await deferLineItem(lineId);
+      setDeferredLineIds((prev) => new Set(prev).add(lineId));
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not defer this line.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  async function reopenLine(lineId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await reopenLineItem(lineId);
+      updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not reopen this line.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  if (state.status === "loading") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        >
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
+            <div className="h-6 w-40 animate-pulse rounded bg-[var(--om-surface-2)]" />
+            <div className="h-10 w-96 animate-pulse rounded bg-[var(--om-surface-2)]" />
+            <div className="h-64 animate-pulse rounded-lg bg-[var(--om-surface-2)]" />
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <AppShell>
+        <main
+          id="main"
+          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        >
+          <div className="mx-auto flex w-full max-w-2xl flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">
+            <p>{state.message}</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetryKey((key) => key + 1)}
+              className="h-9 border-amber-300 bg-white px-4 text-xs text-amber-800 hover:bg-amber-100"
+            >
+              Try again
+            </Button>
+          </div>
+        </main>
+      </AppShell>
+    );
+  }
+
+  const { order, otherOrders } = state;
+
+  const unresolvedCount = order.lineItems.filter((line) => !isLineClear(line.status)).length;
 
   return (
     <AppShell>
@@ -242,6 +357,12 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
               ) : null}
             </div>
 
+            {actionError ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {actionError}
+              </p>
+            ) : null}
+
             <div>
               <p className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--om-muted)]">
                 Matching each item to the catalog
@@ -252,12 +373,12 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
                     return null;
                   }
 
-                  const clear = isLineClear(line.status);
-                  const resolution = clear ? undefined : resolutions[line.id] ?? { state: "open" as const };
-                  const candidates = clear ? [] : getLineCandidates(order, line.id).slice(0, 3);
+                  const rowClear = isLineClear(line.status);
+                  const originallyClear = rowClear && !line.resolvedByDecision;
+                  const isDeferred = deferredLineIds.has(line.id);
+                  const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 3);
                   const isLastRendered = index === revealedLines - 1;
-
-                  const rowClear = clear || resolution?.state === "resolved";
+                  const isPending = pendingLineId === line.id;
 
                   return (
                     <div
@@ -289,9 +410,7 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
                           <div className="min-w-0">
                             <p className="truncate text-xs text-[var(--om-muted)]">{line.originalText}</p>
                             <p className="truncate text-sm font-semibold text-[var(--om-text)]">
-                              {resolution?.state === "resolved"
-                                ? resolution.label
-                                : line.normalizedName ?? line.originalText}
+                              {line.normalizedName ?? line.originalText}
                             </p>
                           </div>
                           <span
@@ -303,11 +422,11 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
                             )}
                           >
                             {rowClear ? <Check className="size-3" /> : <AlertTriangle className="size-3" />}
-                            {clear ? "Matched" : resolution?.state === "resolved" ? "Confirmed" : "Needs a decision"}
+                            {originallyClear ? "Matched" : rowClear ? "Confirmed" : "Needs a decision"}
                           </span>
                         </div>
 
-                        {!clear && resolution?.state === "open" ? (
+                        {!originallyClear && !rowClear && !isDeferred ? (
                           <MatchPickList
                             candidates={candidates}
                             customValue={customAnswers[line.id] ?? ""}
@@ -316,16 +435,15 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
                             }
                             onCustomSubmit={() => resolveWithCustomAnswer(line.id)}
                             onDefer={() => deferLine(line.id)}
-                            onPick={(candidateId) => {
-                              const candidate = candidates.find((item) => item.id === candidateId);
-                              if (candidate) {
-                                resolveWithCandidate(line.id, candidate);
-                              }
-                            }}
+                            onPick={(candidateId) => resolveWithCandidate(line.id, candidateId)}
                           />
                         ) : null}
 
-                        {!clear && resolution?.state === "deferred" ? (
+                        {isPending ? (
+                          <p className="mt-1 text-xs text-[var(--om-muted)]">Saving...</p>
+                        ) : null}
+
+                        {!originallyClear && !rowClear && isDeferred ? (
                           <button
                             type="button"
                             onClick={() => reopenLine(line.id)}

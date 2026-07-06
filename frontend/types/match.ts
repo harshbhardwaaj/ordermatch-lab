@@ -29,7 +29,11 @@ export type MatchCandidate = {
   lineItemId: string;
   catalogItemId?: string;
   sku?: string;
-  confidenceBand: ConfidenceBand;
+  // Backend-internal only (see backend/common/choices.py's ConfidenceBand
+  // docstring and clarifications.md §7): the real backend deliberately
+  // excludes these from the API response, so they're optional here, not
+  // guaranteed. No live component reads either field.
+  confidenceBand?: ConfidenceBand;
   score?: number;
   rank: number;
   proofItems: CandidateProofItem[];

@@ -1,24 +1,16 @@
 from django.contrib import admin
 
-from .models import CustomerRule, OnboardingSetup, OnboardingStep, SetupConfiguration
+from .models import SetupConfiguration
 
 
-class OnboardingStepInline(admin.TabularInline):
-    model = OnboardingStep
-    extra = 0
-
-
-class CustomerRuleInline(admin.TabularInline):
-    model = CustomerRule
-    extra = 0
-
-
-class SetupConfigurationInline(admin.StackedInline):
-    model = SetupConfiguration
-    extra = 0
-
-
-@admin.register(OnboardingSetup)
-class OnboardingSetupAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer_name", "catalog_item_count", "is_simulated")
-    inlines = [OnboardingStepInline, CustomerRuleInline, SetupConfigurationInline]
+@admin.register(SetupConfiguration)
+class SetupConfigurationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "auto_approve_threshold",
+        "price_flag_threshold",
+        "stop_discontinued_items",
+        "review_noncatalog_items",
+        "flag_duplicate_lines",
+        "updated_at",
+    )

@@ -22,16 +22,16 @@ The prototype demonstrates the workflow Comena's product likely needs: reading a
 
 ## What's real vs. simulated
 
-This is a v0.x frontend-only prototype, and it stays honest about what that means:
+This stays honest about what's actually wired up versus still simulated:
 
-- Real: the interaction design, the reasoning behind confidence, matching, and evals (grounded in cited research under `docs/research/`), and the candidate proof links. The AI Investment Analyst and CV-JD Fit Scorer are live deployed tools, not mockups.
-- Simulated: the frontend still runs entirely on its own local synthetic dataset (`frontend/data/`), with client-side timers standing in for a real pipeline. The two are not wired together yet, so nothing a reviewer sees in the app is actually parsed, matched by a model, or sent to a real ERP.
-- In progress: a real Django REST Framework + Postgres backend now exists in `backend/` (see `backend/README.md`), with models and read-only API endpoints mirroring the frontend's data shapes and seeded from the same grounded sample data. It runs and is tested locally but is not yet deployed, and the frontend does not call it yet. Real extraction and matching via the Claude API, backend-computed confidence, and real eval computation are still ahead (see `docs/spec-kit/tasks.md`, Phase 12 onward).
+- Real: the order review workflow (`/prototype/start`, `/processing`, `/summary`, `/waiting`) and the setup flow's rules/thresholds now run against a real Django + Postgres backend (`backend/`), not local mock data. Picking an order, resolving a flagged line (by candidate or free text), deferring/reopening it, sending an order to the ERP, and changing an auto-approve threshold all genuinely persist, verified by clicking through the app end to end against a real running server. The candidate proof links are real too: AI Investment Analyst and CV-JD Fit Scorer are live deployed tools, not mockups.
+- Simulated: the match candidates and their "why this matched" reasoning are still grounded synthetic data seeded into Postgres, not computed by a real matching pipeline. Order extraction from pasted/uploaded text is still a fixed client-side timer that always resolves to the same sample order regardless of input. Real extraction and matching via the Claude API, backend-computed confidence, and real eval computation are still ahead (see `docs/spec-kit/tasks.md`, Phase 13).
+- Not yet deployed: the backend runs and is tested locally (real Postgres, an automated test suite) but isn't on Render yet, so running the frontend locally now requires the backend running locally too (see Local Development below).
 
 ## Tech stack
 
 - Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
-- Backend: Django + Django REST Framework, Postgres (see `backend/README.md`), targeting Render for deployment. Scaffolded and running locally; not yet deployed or connected to the frontend.
+- Backend: Django + Django REST Framework, Postgres (see `backend/README.md`), targeting Render for deployment. Scaffolded, tested, and called by the frontend locally; not yet deployed.
 
 ## Local Development
 
@@ -55,13 +55,22 @@ npm run dev:polling
 npm run typecheck
 npm run lint
 npm run build
+npm test
 ```
 
-### Backend (optional, not yet required to run the app)
+### Backend (required for the order review and setup flows)
 
-The frontend above runs fully on its own local data and does not need the
-backend. See `backend/README.md` if you want to run the Django API
-scaffold locally too.
+`/prototype/start`, `/processing`, `/summary`, `/waiting`, and `/prototype/setup`'s
+rules step now call a real backend. See `backend/README.md` to set up
+Postgres and run the Django API locally, then point the frontend at it
+with `frontend/.env.local`:
+
+```
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+The rest of the app (`/`, `/thesis`, `/proof`, `/contact`, the workflow
+diagram) doesn't need the backend at all.
 
 ## Project docs
 

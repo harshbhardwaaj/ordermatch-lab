@@ -60,6 +60,12 @@ export type OrderLineItem = {
   status: LineItemStatus;
   exceptionIds: string[];
   selectedMatchCandidateId?: string;
+  // True once a real accepted decision exists for this line (backend-computed,
+  // see backend/orders/serializers.py's OrderLineItemSerializer). Distinct from
+  // a line that was already "matched" in the seeded sample data, so "Confirmed"
+  // vs. "Matched" survives navigation and reloads correctly. Optional since
+  // local/mock data (if ever used again) won't have this.
+  resolvedByDecision?: boolean;
 };
 
 export type ExceptionCategory =

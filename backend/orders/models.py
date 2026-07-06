@@ -22,7 +22,11 @@ class OrderRecord(models.Model):
 
     id = models.CharField(primary_key=True, max_length=64)
 
-    # OrderHeader, flattened onto the order itself.
+    # OrderHeader, flattened onto the order itself. order_number is the
+    # customer-facing PO/RFQ number (e.g. "PO-2026-0142"), distinct from
+    # this record's internal id (e.g. "ord-vh-2026-0142") and from
+    # frontend/types/order.ts's OrderHeader.orderId, which it mirrors.
+    order_number = models.CharField(max_length=64, blank=True)
     customer_name = models.CharField(max_length=255)
     customer_reference = models.CharField(max_length=128, blank=True)
     source = models.CharField(max_length=32, choices=OrderSource.choices)

@@ -8,10 +8,10 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransitionLink } from "@/components/view-transition-link";
-import { primaryWalkthroughOrderId, sampleOrders, type SyntheticOrderRecord } from "@/data/orders";
+import { ApiError, fetchOrders } from "@/lib/api";
+import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/orders";
 import { formatOrderSource } from "@/lib/formatters";
 import { getOrderProcessingHref, getOrderSummaryHref } from "@/lib/product-workflow";
-import { getSentOrderIds } from "@/lib/processing-state";
 import { cn } from "@/lib/utils";
 
 const FORWARDING_ADDRESS = "orders@ordermatch-demo.ai";
@@ -34,7 +34,9 @@ function navigateWithTransition(router: ReturnType<typeof useRouter>, href: stri
   });
 }
 
-function SampleOrderCard({ order, isSent }: { order: SyntheticOrderRecord; isSent: boolean }) {
+function SampleOrderCard({ order }: { order: SyntheticOrderRecord }) {
+  const isSent = order.status === "erp-ready";
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -181,20 +183,43 @@ function OwnOrderPanel({ onSubmit }: { onSubmit: () => void }) {
   );
 }
 
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; orders: SyntheticOrderRecord[] };
+
 export function OrderIntake() {
   const router = useRouter();
   const [showOwnOrder, setShowOwnOrder] = useState(false);
-  const [sentOrderIds, setSentOrderIds] = useState<string[]>([]);
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    setSentOrderIds(getSentOrderIds());
-  }, []);
-
-  const sentCount = sampleOrders.filter((order) => sentOrderIds.includes(order.id)).length;
+    let cancelled = false;
+    setState({ status: "loading" });
+    fetchOrders()
+      .then((orders) => {
+        if (!cancelled) setState({ status: "success", orders });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof ApiError
+            ? error.detail
+            : "Could not load orders. The backend may be offline.";
+        setState({ status: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [retryKey]);
 
   function submitOwnOrder() {
     navigateWithTransition(router, getOrderProcessingHref(primaryWalkthroughOrderId));
   }
+
+  const sentCount =
+    state.status === "success" ? state.orders.filter((o) => o.status === "erp-ready").length : 0;
 
   return (
     <AppShell>
@@ -211,17 +236,40 @@ export function OrderIntake() {
               Pick an order to review.
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--om-muted)] sm:text-base">
-              {sentCount > 0
-                ? `You've sent ${sentCount} of ${sampleOrders.length} orders so far. Pick another below, or bring your own.`
+              {state.status === "success" && sentCount > 0
+                ? `You've sent ${sentCount} of ${state.orders.length} orders so far. Pick another below, or bring your own.`
                 : "Choose one of the sample orders below, or bring your own."}
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {sampleOrders.map((order) => (
-              <SampleOrderCard key={order.id} order={order} isSent={sentOrderIds.includes(order.id)} />
-            ))}
-          </div>
+          {state.status === "loading" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-36 animate-pulse rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)]"
+                />
+              ))}
+            </div>
+          ) : state.status === "error" ? (
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+              <p>{state.message}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRetryKey((key) => key + 1)}
+                className="h-8 border-amber-300 bg-white px-3 text-xs text-amber-800 hover:bg-amber-100"
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {state.orders.map((order) => (
+                <SampleOrderCard key={order.id} order={order} />
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-col items-start gap-4">
             {showOwnOrder ? (
