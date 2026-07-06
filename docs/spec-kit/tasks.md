@@ -203,18 +203,18 @@
 
 **Purpose**: Introduce the real backend/API layer required for v1.0, hosted on Render. Scope and rationale recorded in `docs/spec-kit/clarifications.md` §7.
 
-- [ ] T094 Decide Django API pattern: Django REST Framework, Django Ninja, or another Django approach.
-- [ ] T095 Provision a Render web service (backend) and a Render managed Postgres database.
-- [ ] T096 Scaffold Python/Django backend in a separate `backend/` folder using the chosen API pattern.
-- [ ] T097 Add backend environment configuration and secret-handling pattern, including the Claude API key, read from environment variables only, never committed.
-- [ ] T098 Configure Postgres connection for local development and the Render-hosted deployment.
-- [ ] T099 Define backend models for orders, order lines, catalog items, match candidates, setup configuration (auto-approve threshold, price-flag threshold, rule toggles), review decisions, and eval runs.
-- [ ] T100 Create initial API endpoints that mirror the frontend mock data shape (orders, catalog, setup config).
-- [ ] T101 Add API contract documentation or typed schemas so frontend and backend stay aligned.
-- [ ] T102 Add seed-data loading from the existing grounded synthetic examples (`frontend/data/`, `docs/data-research/`).
-- [ ] T103 Update frontend data access layer so frontend can switch between local mock data and backend API data via an environment flag.
+- [x] T094 Decide Django API pattern: Django REST Framework, Django Ninja, or another Django approach. Decided: DRF, for the production-Django-shop signal it sends given Comena's stack.
+- [ ] T095 Provision a Render web service (backend) and a Render managed Postgres database. Deliberately deferred: built and verified everything locally first (real Postgres 16, running server, real HTTP requests against every endpoint) before touching deployment, per Harsh's direction to build/run locally before deploying.
+- [x] T096 Scaffold Python/Django backend in a separate `backend/` folder using the chosen API pattern. Apps: `catalogs`, `orders`, `matching`, `onboarding`, `evals`, plus a plain `common` module for shared choice/enum definitions used across app models.
+- [x] T097 Add backend environment configuration and secret-handling pattern, including the Claude API key, read from environment variables only, never committed. `.env.example` documents every variable; `.env` stays gitignored; `ANTHROPIC_API_KEY` is read only in `settings.py`, never referenced from any frontend code.
+- [x] T098 Configure Postgres connection for local development and the Render-hosted deployment. Local: real Postgres 16 role/database (`ordermatch`/`ordermatch_dev`), migrations applied and verified. Deployed: settings.py reads `DATABASE_URL` via `dj-database-url`, which is exactly the variable Render injects automatically once T095 happens; no code change should be needed when that lands.
+- [x] T099 Define backend models for orders, order lines, catalog items, match candidates, setup configuration (auto-approve threshold, price-flag threshold, rule toggles), review decisions, and eval runs. All fields mirror `frontend/types/*.ts` directly; `onboarding.SetupConfiguration` is new (the thresholds only existed as component `useState` before, see `setup-flow.tsx`).
+- [x] T100 Create initial API endpoints that mirror the frontend mock data shape (orders, catalog, setup config). Read-only DRF viewsets under `/api/`, verified against a running server, not just unit tests.
+- [x] T101 Add API contract documentation or typed schemas so frontend and backend stay aligned. Documented in `backend/README.md`; DRF's browsable API also serves as a live, always-current reference.
+- [x] T102 Add seed-data loading from the existing grounded synthetic examples (`frontend/data/`, `docs/data-research/`). `backend/scripts/export_frontend_data.mjs` exports `frontend/data/*.ts` to JSON fixtures (using Node's built-in TypeScript stripping, no extra tooling needed) committed under `backend/seed_data/`; `python manage.py seed_sample_data` loads them, verified against real Postgres (46 catalog items, 4 orders, 16 line items, 11 exceptions, 11 readiness checks, 24 match candidates, 2 eval runs).
+- [ ] T103 Update frontend data access layer so frontend can switch between local mock data and backend API data via an environment flag. Not started: this is frontend-side work and out of scope for this backend-scaffold pass until confirmed.
 
-**Checkpoint**: Backend exists on Render, loads sample data, documents its API shape, and can serve the same core data shape used by the frontend.
+**Checkpoint**: Backend scaffold is built, migrated, seeded, and verified against a real running server and real Postgres, locally. Not yet on Render and not yet called by the frontend — both deliberately deferred, not blocked.
 
 ---
 
