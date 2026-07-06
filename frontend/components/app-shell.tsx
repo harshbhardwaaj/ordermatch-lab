@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
     label: "What I built",
     children: [
       { href: "/prototype", label: "Prototype" },
+      { href: "/prototype/orders", label: "Order log" },
       { href: "/prototype/setup", label: "Setup" },
     ],
   },

@@ -3,6 +3,12 @@ part-number rules first, then OpenAI-assisted semantic matching against the
 catalog for whatever remains ambiguous. Confidence scoring (T119) and match
 traceability (T121) both come directly out of this same pipeline. See
 clarifications.md §7 (matching approach) and §8 (OpenAI, not Claude).
+
+Semantic matching for an order's ambiguous lines is batched into a single
+OpenAI call (match_order_lines), not one call per line. A large order with
+many ambiguous lines used to mean that many sequential round trips, each
+re-sending the full catalog, which scales badly (linear latency, repeated
+token cost) and risks a request timeout once this is actually deployed.
 """
 
 from __future__ import annotations
@@ -144,6 +150,29 @@ def _deterministic_score(extracted: dict, catalog_item: CatalogItem) -> tuple[fl
     return min(score, 100.0), proof_items, missing_evidence
 
 
+def _deterministic_candidates(extracted: dict, catalog_items: list[CatalogItem]) -> list[ScoredCandidate]:
+    deterministic = []
+    for catalog_item in catalog_items:
+        score, proof_items, missing_evidence = _deterministic_score(extracted, catalog_item)
+        if score > 0:
+            deterministic.append(
+                ScoredCandidate(
+                    catalog_item=catalog_item,
+                    score=score,
+                    proof_items=proof_items,
+                    missing_evidence=missing_evidence,
+                )
+            )
+    deterministic.sort(key=lambda c: c.score, reverse=True)
+    return deterministic
+
+
+def _is_confident(deterministic: list[ScoredCandidate]) -> bool:
+    top = deterministic[0] if deterministic else None
+    runner_up_score = deterministic[1].score if len(deterministic) > 1 else 0
+    return bool(top and top.score >= CONFIDENT_SCORE and (top.score - runner_up_score) >= CONFIDENT_MARGIN)
+
+
 def _catalog_summary_for_llm(catalog_item: CatalogItem) -> dict:
     return {
         "sku": catalog_item.sku,
@@ -160,60 +189,78 @@ _REASON_KINDS = [
     "synonym", "catalog-attribute", "price", "availability",
 ]
 
-_SEMANTIC_MATCH_SCHEMA = {
+_CANDIDATE_SCHEMA = {
     "type": "object",
     "properties": {
-        "candidates": {
+        "sku": {"type": "string"},
+        "confidence": {"type": "number"},
+        "supports_match": {"type": "boolean"},
+        "reasons": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "sku": {"type": "string"},
-                    "confidence": {"type": "number"},
-                    "supports_match": {"type": "boolean"},
-                    "reasons": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "kind": {"type": "string", "enum": _REASON_KINDS},
-                                "label": {"type": "string"},
-                                "source_value": {"type": "string"},
-                                "catalog_value": {"type": "string"},
-                            },
-                            "required": ["kind", "label", "source_value", "catalog_value"],
-                            "additionalProperties": False,
-                        },
-                    },
+                    "kind": {"type": "string", "enum": _REASON_KINDS},
+                    "label": {"type": "string"},
+                    "source_value": {"type": "string"},
+                    "catalog_value": {"type": "string"},
                 },
-                "required": ["sku", "confidence", "supports_match", "reasons"],
+                "required": ["kind", "label", "source_value", "catalog_value"],
                 "additionalProperties": False,
             },
         },
     },
-    "required": ["candidates"],
+    "required": ["sku", "confidence", "supports_match", "reasons"],
     "additionalProperties": False,
 }
 
-_SEMANTIC_SYSTEM_PROMPT = (
-    "You match a requested order line item against a product catalog. Given "
-    "the line item and the full catalog, return up to 3 candidate SKUs "
-    "ranked by how well they match, most likely first. confidence is 0-100: "
-    "your own honest estimate of match quality, not a rounded guess. Only "
-    "include a candidate if it is a plausible match for this specific line "
-    "item; return an empty list if nothing in the catalog is a reasonable "
-    "fit. Base reasons only on real similarities or differences between the "
-    "requested item and that specific catalog entry, not generic statements."
+_BATCH_SEMANTIC_MATCH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "candidates": {"type": "array", "items": _CANDIDATE_SCHEMA},
+                },
+                "required": ["index", "candidates"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["results"],
+    "additionalProperties": False,
+}
+
+_BATCH_SEMANTIC_SYSTEM_PROMPT = (
+    "You match a batch of requested order line items against a product "
+    "catalog, one line item at a time. Evaluate each requested line item "
+    "completely independently: one line's likely match must never "
+    "influence another line's candidates, even if they look similar. For "
+    "each line item, identified by its index, return up to 3 candidate "
+    "SKUs ranked by how well they match, most likely first. confidence is "
+    "0-100: your own honest estimate of match quality, not a rounded "
+    "guess. Only include a candidate if it is a plausible match for that "
+    "specific line item; return an empty candidates list for a line item "
+    "if nothing in the catalog is a reasonable fit. Base reasons only on "
+    "real similarities or differences between the requested item and that "
+    "specific catalog entry, not generic statements. Return exactly one "
+    "result entry per line item index given, even when its candidates "
+    "list is empty."
 )
 
 
-def _semantic_match(extracted: dict, catalog_items: list[CatalogItem]) -> list[dict]:
-    if not settings.OPENAI_API_KEY:
-        return []
+def _semantic_match_batch(
+    indexed_lines: list[tuple[int, dict]], catalog_items: list[CatalogItem]
+) -> dict[int, list[dict]]:
+    if not settings.OPENAI_API_KEY or not indexed_lines:
+        return {}
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0)
+    client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=60.0)
     payload = {
-        "requested_line_item": extracted,
+        "requested_line_items": [{"index": index, **extracted} for index, extracted in indexed_lines],
         "catalog": [_catalog_summary_for_llm(c) for c in catalog_items],
     }
 
@@ -221,89 +268,98 @@ def _semantic_match(extracted: dict, catalog_items: list[CatalogItem]) -> list[d
         response = client.chat.completions.create(
             model=MODEL,
             messages=[
-                {"role": "system", "content": _SEMANTIC_SYSTEM_PROMPT},
+                {"role": "system", "content": _BATCH_SEMANTIC_SYSTEM_PROMPT},
                 {"role": "user", "content": json.dumps(payload)},
             ],
             response_format={
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "semantic_match",
-                    "schema": _SEMANTIC_MATCH_SCHEMA,
+                    "name": "batch_semantic_match",
+                    "schema": _BATCH_SEMANTIC_MATCH_SCHEMA,
                     "strict": True,
                 },
             },
         )
     except OpenAIError as exc:
-        raise MatchingError(f"Semantic matching call failed: {exc}") from exc
+        raise MatchingError(f"Batched semantic matching call failed: {exc}") from exc
 
     try:
         parsed = json.loads(response.choices[0].message.content)
     except (TypeError, json.JSONDecodeError, IndexError, AttributeError) as exc:
-        raise MatchingError("Semantic matching returned a malformed response.") from exc
+        raise MatchingError("Batched semantic matching returned a malformed response.") from exc
 
-    return parsed.get("candidates", [])
+    return {result["index"]: result.get("candidates", []) for result in parsed.get("results", [])}
 
 
-def match_line_item(extracted: dict, catalog_items: list[CatalogItem]) -> list[ScoredCandidate]:
-    """extracted is one line item dict from extraction.extract_order's
-    line_items list. catalog_items is the active catalog. Returns up to
-    MAX_CANDIDATES ScoredCandidate, best first, or an empty list if nothing
-    plausible was found at all.
+def _resolve_semantic_candidates(
+    semantic_candidates: list[dict], catalog_items: list[CatalogItem]
+) -> list[ScoredCandidate]:
+    by_sku = {c.sku: c for c in catalog_items}
+    scored = []
+    for candidate in semantic_candidates[:MAX_CANDIDATES]:
+        catalog_item = by_sku.get(candidate["sku"])
+        if not catalog_item:
+            continue
+        proof_items = [
+            {
+                "kind": reason["kind"],
+                "label": reason["label"],
+                "sourceValue": reason["source_value"],
+                "catalogValue": reason["catalog_value"],
+                "supportsMatch": candidate["supports_match"],
+            }
+            for reason in candidate.get("reasons", [])
+        ]
+        scored.append(
+            ScoredCandidate(
+                catalog_item=catalog_item,
+                score=float(candidate["confidence"]),
+                proof_items=proof_items,
+                matched_via="llm",
+            )
+        )
+    scored.sort(key=lambda c: c.score, reverse=True)
+    return scored[:MAX_CANDIDATES]
+
+
+def match_order_lines(
+    line_items: list[dict], catalog_items: list[CatalogItem]
+) -> list[list[ScoredCandidate]]:
+    """extracted line items from extraction.extract_order's line_items
+    list, matched in at most one combined OpenAI call for the whole order:
+    the deterministic pass runs per line locally (no API call), and every
+    line left ambiguous afterward is sent together in a single semantic-
+    match request, rather than one request per ambiguous line.
+
+    Returns one candidate list per input line item, in the same order,
+    each up to MAX_CANDIDATES best-first, or empty if nothing plausible
+    was found at all for that line.
     """
-    deterministic = []
-    for catalog_item in catalog_items:
-        score, proof_items, missing_evidence = _deterministic_score(extracted, catalog_item)
-        if score > 0:
-            deterministic.append(
-                ScoredCandidate(
-                    catalog_item=catalog_item,
-                    score=score,
-                    proof_items=proof_items,
-                    missing_evidence=missing_evidence,
-                )
-            )
-    deterministic.sort(key=lambda c: c.score, reverse=True)
+    deterministic_per_line = [_deterministic_candidates(line, catalog_items) for line in line_items]
+    needs_escalation = [
+        (index, line_items[index])
+        for index, deterministic in enumerate(deterministic_per_line)
+        if not _is_confident(deterministic)
+    ]
 
-    top = deterministic[0] if deterministic else None
-    runner_up_score = deterministic[1].score if len(deterministic) > 1 else 0
-    if top and top.score >= CONFIDENT_SCORE and (top.score - runner_up_score) >= CONFIDENT_MARGIN:
-        return [top]
+    batch_results: dict[int, list[dict]] = {}
+    if needs_escalation:
+        try:
+            batch_results = _semantic_match_batch(needs_escalation, catalog_items)
+        except MatchingError:
+            batch_results = {}
 
-    try:
-        semantic_candidates = _semantic_match(extracted, catalog_items)
-    except MatchingError:
-        semantic_candidates = []
+    results = []
+    for index, deterministic in enumerate(deterministic_per_line):
+        if _is_confident(deterministic):
+            results.append([deterministic[0]])
+            continue
 
-    if semantic_candidates:
-        by_sku = {c.sku: c for c in catalog_items}
-        scored = []
-        for candidate in semantic_candidates[:MAX_CANDIDATES]:
-            catalog_item = by_sku.get(candidate["sku"])
-            if not catalog_item:
-                continue
-            proof_items = [
-                {
-                    "kind": reason["kind"],
-                    "label": reason["label"],
-                    "sourceValue": reason["source_value"],
-                    "catalogValue": reason["catalog_value"],
-                    "supportsMatch": candidate["supports_match"],
-                }
-                for reason in candidate.get("reasons", [])
-            ]
-            scored.append(
-                ScoredCandidate(
-                    catalog_item=catalog_item,
-                    score=float(candidate["confidence"]),
-                    proof_items=proof_items,
-                    matched_via="llm",
-                )
-            )
-        if scored:
-            scored.sort(key=lambda c: c.score, reverse=True)
-            return scored[:MAX_CANDIDATES]
+        scored = _resolve_semantic_candidates(batch_results.get(index, []), catalog_items)
+        # The LLM found nothing better than the deterministic pass (or the
+        # batched call failed outright): fall back to whatever
+        # deterministic signal exists, even if weak, so the reviewer still
+        # has candidates to pick from instead of an empty picker.
+        results.append(scored if scored else deterministic[:MAX_CANDIDATES])
 
-    # LLM found nothing better than the deterministic pass: fall back to
-    # whatever deterministic signal exists, even if weak, so the reviewer
-    # still has candidates to pick from instead of an empty picker.
-    return deterministic[:MAX_CANDIDATES]
+    return results

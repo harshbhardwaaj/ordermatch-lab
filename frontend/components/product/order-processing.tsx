@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Check, ChevronLeft } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { MatchPickList } from "@/components/product/match-pick-list";
@@ -112,6 +113,7 @@ type LoadState =
   | { status: "success"; order: SyntheticOrderRecord; otherOrders: SyntheticOrderRecord[] };
 
 export function OrderProcessing({ orderId }: { orderId: string }) {
+  const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [deferredLineIds, setDeferredLineIds] = useState<Set<string>>(new Set());
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
@@ -305,6 +307,15 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
       >
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
           <section className="flex flex-col gap-5">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex w-fit items-center gap-1 text-sm font-medium text-[var(--om-muted)] hover:text-[var(--om-text)]"
+            >
+              <ChevronLeft className="size-4" />
+              Back
+            </button>
+
             <div>
               <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
                 Processing

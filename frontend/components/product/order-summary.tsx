@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { MatchPickList } from "@/components/product/match-pick-list";
@@ -9,12 +10,14 @@ import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
 import type { SyntheticOrderRecord } from "@/data/orders";
 import { formatDate, formatOrderSource } from "@/lib/formatters";
-import { getLineCandidates, getWaitingQueueHref } from "@/lib/product-workflow";
+import { getLineCandidates, getOrderIntakeHref, getWaitingQueueHref } from "@/lib/product-workflow";
 import {
   ApiError,
   decideLineItem,
+  deferLineItem,
   ensureCatalogItemsLoaded,
   fetchOrder,
+  reopenLineItem,
   sendOrderToErp,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -29,9 +32,11 @@ type LoadState =
   | { status: "success"; order: SyntheticOrderRecord };
 
 export function OrderSummary({ orderId }: { orderId: string }) {
+  const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [expandedLines, setExpandedLines] = useState<Set<string>>(new Set());
+  const [deferredLineIds, setDeferredLineIds] = useState<Set<string>>(new Set());
   const [pendingLineId, setPendingLineId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -89,6 +94,11 @@ export function OrderSummary({ orderId }: { orderId: string }) {
     try {
       const updated = await decideLineItem(lineId, { candidateId });
       updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
     } catch (error) {
       setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
     } finally {
@@ -106,8 +116,44 @@ export function OrderSummary({ orderId }: { orderId: string }) {
     try {
       const updated = await decideLineItem(lineId, { customLabel: text });
       updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
     } catch (error) {
       setActionError(error instanceof ApiError ? error.detail : "Could not save that decision.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  async function deferLine(lineId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      await deferLineItem(lineId);
+      setDeferredLineIds((prev) => new Set(prev).add(lineId));
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not defer this line.");
+    } finally {
+      setPendingLineId(null);
+    }
+  }
+
+  async function reopenLine(lineId: string) {
+    setActionError(null);
+    setPendingLineId(lineId);
+    try {
+      const updated = await reopenLineItem(lineId);
+      updateLineItem(lineId, updated);
+      setDeferredLineIds((prev) => {
+        const next = new Set(prev);
+        next.delete(lineId);
+        return next;
+      });
+    } catch (error) {
+      setActionError(error instanceof ApiError ? error.detail : "Could not reopen this line.");
     } finally {
       setPendingLineId(null);
     }
@@ -179,55 +225,6 @@ export function OrderSummary({ orderId }: { orderId: string }) {
       ? "A few things need a decision before this can be sent."
       : `${order.header.customerName}'s order is ready for the ERP.`;
 
-  if (sent) {
-    return (
-      <AppShell>
-        <main
-          id="main"
-          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
-        >
-          <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 text-center">
-            <span className="flex size-16 items-center justify-center rounded-full border-2 border-green-300 bg-green-50 [animation:success-pop_500ms_cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none">
-              <Check className="size-8 text-green-600" />
-            </span>
-            <div className="[animation:reveal-item_400ms_ease-out] motion-reduce:animate-none">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
-                Sent
-              </p>
-              <h1 className="mt-3 text-xl font-extrabold leading-snug text-[var(--om-text)] sm:text-2xl">
-                {title}
-              </h1>
-              <p className="mt-2 text-sm text-[var(--om-muted)]">
-                Sent to the ERP as {order.header.orderId}.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none">
-              <Button
-                asChild
-                className="h-10 bg-[var(--om-accent)] px-6 text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
-              >
-                <TransitionLink href={getWaitingQueueHref()}>
-                  Handle what else needs you
-                </TransitionLink>
-              </Button>
-              <Button asChild variant="outline" className="h-10 px-6">
-                <TransitionLink href="/prototype/start">Start a new order</TransitionLink>
-              </Button>
-            </div>
-            <div className="[animation:reveal-item_400ms_ease-out] motion-reduce:animate-none">
-              <TransitionLink
-                href="/prototype/setup"
-                className="text-sm font-semibold text-[var(--om-accent)] underline-offset-4 hover:underline"
-              >
-                Set this up for your own catalog
-              </TransitionLink>
-            </div>
-          </section>
-        </main>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell>
       <main
@@ -235,9 +232,29 @@ export function OrderSummary({ orderId }: { orderId: string }) {
         className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
       >
         <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex w-fit items-center gap-1 text-sm font-medium text-[var(--om-muted)] hover:text-[var(--om-text)]"
+          >
+            <ChevronLeft className="size-4" />
+            Back
+          </button>
+
+          {sent ? (
+            <div className="flex items-center gap-3 rounded-lg border border-green-300 bg-green-50 p-4 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-green-300 bg-white [animation:success-pop_500ms_cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none">
+                <Check className="size-4 text-green-600" />
+              </span>
+              <p className="text-sm font-semibold text-green-800">
+                Sent to the ERP as {order.header.orderId}.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
-              Summary
+              {sent ? "Sent" : "Summary"}
             </p>
             <h1 className="mt-3 text-xl font-extrabold leading-snug text-[var(--om-text)] sm:text-2xl">
               {title}
@@ -285,6 +302,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
               const expanded = expandedLines.has(line.id);
               const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 3);
               const isPending = pendingLineId === line.id;
+              const isDeferred = deferredLineIds.has(line.id);
 
               return (
                 <div
@@ -356,7 +374,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                     </div>
                   ) : null}
 
-                  {!originallyClear && !rowClear ? (
+                  {!originallyClear && !rowClear && !isDeferred ? (
                     <MatchPickList
                       candidates={candidates}
                       customValue={customAnswers[line.id] ?? ""}
@@ -364,8 +382,19 @@ export function OrderSummary({ orderId }: { orderId: string }) {
                         setCustomAnswers((prev) => ({ ...prev, [line.id]: value }))
                       }
                       onCustomSubmit={() => resolveWithCustomAnswer(line.id)}
+                      onDefer={() => deferLine(line.id)}
                       onPick={(candidateId) => resolveWithCandidate(line.id, candidateId)}
                     />
+                  ) : null}
+
+                  {!originallyClear && !rowClear && isDeferred ? (
+                    <button
+                      type="button"
+                      onClick={() => reopenLine(line.id)}
+                      className="mt-1 text-xs font-medium text-[var(--om-accent)] hover:underline"
+                    >
+                      Review now
+                    </button>
                   ) : null}
 
                   {isPending ? (
@@ -376,7 +405,29 @@ export function OrderSummary({ orderId }: { orderId: string }) {
             })}
           </div>
 
-          {unresolvedCount > 0 ? (
+          {sent ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  asChild
+                  className="h-10 bg-[var(--om-accent)] px-6 text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
+                >
+                  <TransitionLink href={getWaitingQueueHref()}>
+                    Handle what else needs you
+                  </TransitionLink>
+                </Button>
+                <Button asChild variant="outline" className="h-10 px-6">
+                  <TransitionLink href={getOrderIntakeHref()}>Start a new order</TransitionLink>
+                </Button>
+              </div>
+              <TransitionLink
+                href="/prototype/setup"
+                className="text-sm font-semibold text-[var(--om-accent)] underline-offset-4 hover:underline"
+              >
+                Set this up for your own catalog
+              </TransitionLink>
+            </div>
+          ) : unresolvedCount > 0 ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-center">
               <p className="font-bold text-amber-800">
                 {unresolvedCount} item{unresolvedCount === 1 ? "" : "s"}{" "}

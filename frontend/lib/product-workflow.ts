@@ -1,6 +1,10 @@
 import { getCachedCatalogItemById } from "@/lib/api";
 import type { SyntheticOrderRecord } from "@/data/orders";
 
+export function getOrderIntakeHref() {
+  return "/prototype/start";
+}
+
 export function getOrderProcessingHref(orderId: string) {
   return `/prototype/processing/${orderId}`;
 }
@@ -11,6 +15,10 @@ export function getOrderSummaryHref(orderId: string) {
 
 export function getWaitingQueueHref() {
   return "/prototype/waiting";
+}
+
+export function getOrderLogHref() {
+  return "/prototype/orders";
 }
 
 export function getLineCandidates(order: SyntheticOrderRecord, lineItemId: string) {

@@ -7,10 +7,13 @@ See clarifications.md §7 (approach) and §8 (OpenAI, not Claude).
 from __future__ import annotations
 
 import json
+import logging
 
 from django.conf import settings
 from django.utils import timezone
 from openai import OpenAI, OpenAIError
+
+logger = logging.getLogger(__name__)
 
 MODEL = "gpt-5.4-mini"
 MAX_PASTED_TEXT_LENGTH = 8000
@@ -105,14 +108,15 @@ def _system_prompt() -> str:
 def extract_order(pasted_text: str) -> dict:
     text = (pasted_text or "").strip()
     if not text:
-        raise ExtractionError("Pasted order text is empty.")
+        raise ExtractionError("Paste in an order before reviewing it.")
     if len(text) > MAX_PASTED_TEXT_LENGTH:
         raise ExtractionError(
-            f"Pasted order text is too long ({len(text)} characters, "
-            f"max {MAX_PASTED_TEXT_LENGTH})."
+            f"That's too much text to read at once ({len(text)} characters, "
+            f"max {MAX_PASTED_TEXT_LENGTH}). Trim it down and try again."
         )
     if not settings.OPENAI_API_KEY:
-        raise ExtractionError("OPENAI_API_KEY is not configured on the backend.")
+        logger.error("OPENAI_API_KEY is not configured; cannot run extraction.")
+        raise ExtractionError("Order reading isn't set up on this server yet.")
 
     client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0)
 
@@ -132,15 +136,28 @@ def extract_order(pasted_text: str) -> dict:
                 },
             },
         )
-    except OpenAIError as exc:
-        raise ExtractionError(f"Extraction call failed: {exc}") from exc
+    except OpenAIError:
+        # The real exception (timeout, rate limit, connection error, etc.)
+        # is logged server-side for debugging, never shown to the reviewer
+        # verbatim: raw SDK error text reads as an unpolished crash, not a
+        # real product's error state.
+        logger.exception("OpenAI extraction call failed.")
+        raise ExtractionError(
+            "Couldn't reach the order-reading service just now. Please try again in a moment."
+        ) from None
 
     try:
         parsed = json.loads(response.choices[0].message.content)
-    except (TypeError, json.JSONDecodeError, IndexError, AttributeError) as exc:
-        raise ExtractionError("Extraction returned a malformed response.") from exc
+    except (TypeError, json.JSONDecodeError, IndexError, AttributeError):
+        logger.exception("OpenAI extraction returned an unparseable response.")
+        raise ExtractionError(
+            "Got an unreadable response while reading that order. Please try again."
+        ) from None
 
     if not parsed.get("line_items"):
-        raise ExtractionError("No line items could be extracted from that text.")
+        raise ExtractionError(
+            "Couldn't find any order details in that text. Try pasting something "
+            "like a product, quantity, and unit (for example, \"50 pcs of M8 bolts\")."
+        )
 
     return parsed

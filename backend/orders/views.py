@@ -14,7 +14,7 @@ from .serializers import (
     OrderRecordListSerializer,
     OrderRecordSerializer,
 )
-from .services import create_order_from_pasted_text
+from .services import create_order_from_pasted_text, reset_demo_data
 
 
 class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
@@ -69,6 +69,17 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
         except ExtractionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(OrderRecordSerializer(order).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"], url_path="reset-demo")
+    def reset_demo(self, request):
+        """Self-serve reset for a shared demo with no login: deletes every
+        real "bring your own" order and restores the 4 sample orders and
+        setup thresholds to their original state. Destructive and global
+        (affects every visitor, not just the caller), so the frontend
+        requires an explicit confirm step before calling this.
+        """
+        reset_demo_data()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):

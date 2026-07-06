@@ -11,7 +11,7 @@ import { TransitionLink } from "@/components/view-transition-link";
 import { ApiError, extractOrder, fetchOrders } from "@/lib/api";
 import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/orders";
 import { formatOrderSource } from "@/lib/formatters";
-import { getOrderProcessingHref, getOrderSummaryHref } from "@/lib/product-workflow";
+import { getOrderLogHref, getOrderProcessingHref, getOrderSummaryHref } from "@/lib/product-workflow";
 import { cn } from "@/lib/utils";
 
 const FORWARDING_ADDRESS = "orders@ordermatch-demo.ai";
@@ -250,8 +250,13 @@ export function OrderIntake() {
     navigateWithTransition(router, getOrderProcessingHref(primaryWalkthroughOrderId));
   }
 
-  const sentCount =
-    state.status === "success" ? state.orders.filter((o) => o.status === "erp-ready").length : 0;
+  // Only the curated sample orders show here, capped by design: real "bring
+  // your own" submissions never join this grid, so it stays a stable menu
+  // of scenarios no matter how much real testing happens. Every order ever
+  // created, sample or real, sent or not, is still browsable on the Order
+  // log screen (getOrderLogHref).
+  const sampleOrders = state.status === "success" ? state.orders.filter((o) => o.isSimulated) : [];
+  const sentCount = sampleOrders.filter((o) => o.status === "erp-ready").length;
 
   return (
     <AppShell>
@@ -268,9 +273,42 @@ export function OrderIntake() {
               Pick an order to review.
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--om-muted)] sm:text-base">
-              {state.status === "success" && sentCount > 0
-                ? `You've sent ${sentCount} of ${state.orders.length} orders so far. Pick another below, or bring your own.`
+              {sentCount > 0
+                ? `You've sent ${sentCount} of ${sampleOrders.length} sample orders so far. Pick another below, or bring your own.`
                 : "Choose one of the sample orders below, or bring your own."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {showOwnOrder ? (
+              <div className="w-full max-w-xl">
+                <OwnOrderPanel
+                  onSubmitPastedText={submitPastedOrder}
+                  onSubmitStub={submitStubOrder}
+                  isSubmitting={isSubmittingOwnOrder}
+                  submitError={ownOrderSubmitError}
+                />
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => setShowOwnOrder(true)}
+                className="h-10 bg-[var(--om-accent)] text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
+              >
+                Bring your own order
+              </Button>
+            )}
+
+            <p className="text-sm text-[var(--om-muted)] sm:text-right">
+              Looking for an order you already tried?
+              <br />
+              <TransitionLink
+                href={getOrderLogHref()}
+                className="font-semibold text-[var(--om-accent)] hover:underline"
+              >
+                See the full order log
+              </TransitionLink>
+              .
             </p>
           </div>
 
@@ -297,33 +335,11 @@ export function OrderIntake() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {state.orders.map((order) => (
+              {sampleOrders.map((order) => (
                 <SampleOrderCard key={order.id} order={order} />
               ))}
             </div>
           )}
-
-          <div className="flex flex-col items-start gap-4">
-            {showOwnOrder ? (
-              <div className="w-full max-w-xl">
-                <OwnOrderPanel
-                  onSubmitPastedText={submitPastedOrder}
-                  onSubmitStub={submitStubOrder}
-                  isSubmitting={isSubmittingOwnOrder}
-                  submitError={ownOrderSubmitError}
-                />
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowOwnOrder(true)}
-                className="h-10 border-[var(--om-border)] bg-[var(--om-surface)] text-[var(--om-text)]"
-              >
-                Use your own order
-              </Button>
-            )}
-          </div>
         </section>
       </main>
     </AppShell>

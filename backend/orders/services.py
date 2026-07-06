@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import uuid
 
+from django.core.management import call_command
 from django.db import transaction
 from django.utils import timezone
 
 from catalogs.models import CatalogItem
-from matching.models import MatchCandidate
-from matching.pipeline import match_line_item
+from matching.models import MatchCandidate, MatchDecision
+from matching.pipeline import match_order_lines
 from onboarding.models import SetupConfiguration
 
 from .extraction import extract_order
@@ -70,8 +71,9 @@ def _discontinued_replacement_map() -> dict[str, str]:
 def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
     """Raises orders.extraction.ExtractionError if extraction fails; no
     order is created in that case (T124). matching.pipeline.MatchingError
-    is caught internally per line, since a failed semantic-match call
-    should degrade to deterministic-only results, not fail the order.
+    is caught internally within match_order_lines, since a failed
+    semantic-match call should degrade to deterministic-only results, not
+    fail the order.
     """
     extracted = extract_order(pasted_text)
 
@@ -97,7 +99,13 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
 
     any_unresolved = False
 
-    for index, line in enumerate(extracted["line_items"], start=1):
+    # Matched once for the whole order (at most one combined OpenAI call
+    # for every ambiguous line together), not once per line item, so a
+    # large order with many ambiguous lines doesn't mean that many
+    # sequential round trips.
+    all_candidates = match_order_lines(extracted["line_items"], catalog_items)
+
+    for index, (line, candidates) in enumerate(zip(extracted["line_items"], all_candidates), start=1):
         line_item = OrderLineItem.objects.create(
             id=_new_id(f"{order.id}-line-{index}"),
             order=order,
@@ -110,8 +118,6 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
             customer_part_number=line.get("customer_part_number") or "",
             status="normalized",
         )
-
-        candidates = match_line_item(line, catalog_items)
 
         stated_identifier = _norm(line.get("customer_part_number")) or _norm(line.get("requested_sku"))
         replacement_sku = discontinued_replacements.get(stated_identifier) if stated_identifier else None
@@ -165,3 +171,33 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
     order.status = "review-needed" if any_unresolved else "ready"
     order.save()
     return order
+
+
+DEFAULT_SETUP_CONFIGURATION = {
+    "auto_approve_threshold": 85,
+    "price_flag_threshold": 15,
+    "stop_discontinued_items": True,
+    "review_noncatalog_items": True,
+    "flag_duplicate_lines": True,
+}
+
+
+@transaction.atomic
+def reset_demo_data() -> None:
+    """Self-serve reset (no login exists, so this is shared across every
+    visitor): deletes every real "bring your own" order, clears any
+    decide/defer/reopen decisions left on the 4 sample orders' lines, then
+    restores the sample orders and setup thresholds to their original
+    seeded values.
+
+    Re-running seed_sample_data alone is not enough for two real reasons:
+    its setup-configuration step uses get_or_create, which leaves an
+    already-existing row untouched, so thresholds would not actually reset;
+    and it never touches MatchDecision at all, so a real decide/defer/
+    reopen action taken on a sample order's line during testing would
+    survive a reset and keep showing "Confirmed" instead of "Matched".
+    """
+    OrderRecord.objects.filter(is_simulated=False).delete()
+    MatchDecision.objects.all().delete()
+    call_command("seed_sample_data")
+    SetupConfiguration.objects.all().update(**DEFAULT_SETUP_CONFIGURATION)

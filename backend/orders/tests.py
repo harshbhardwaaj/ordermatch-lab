@@ -6,8 +6,9 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from catalogs.models import CatalogItem
-from matching.models import MatchCandidate
+from matching.models import MatchCandidate, MatchDecision
 from matching.pipeline import ScoredCandidate
+from onboarding.models import SetupConfiguration
 
 from .extraction import ExtractionError, extract_order
 from .models import OrderException, OrderLineItem, OrderRecord
@@ -314,13 +315,17 @@ class ExtractOrderEndpointTests(TestCase):
             ],
         }
 
-        def fake_match_line_item(extracted, catalog_items):
-            if extracted["description"] == "confident item":
-                return [ScoredCandidate(catalog_item=self.catalog_item, score=95, proof_items=[])]
-            return [ScoredCandidate(catalog_item=self.catalog_item, score=40, proof_items=[])]
+        def fake_match_order_lines(line_items, catalog_items):
+            results = []
+            for line in line_items:
+                if line["description"] == "confident item":
+                    results.append([ScoredCandidate(catalog_item=self.catalog_item, score=95, proof_items=[])])
+                else:
+                    results.append([ScoredCandidate(catalog_item=self.catalog_item, score=40, proof_items=[])])
+            return results
 
         with patch("orders.services.extract_order", return_value=extracted_payload), patch(
-            "orders.services.match_line_item", side_effect=fake_match_line_item
+            "orders.services.match_order_lines", side_effect=fake_match_order_lines
         ):
             response = self.client.post(
                 "/api/orders/extract/", {"pasted_text": "send some stuff"}, format="json"
@@ -378,8 +383,8 @@ class ExtractOrderEndpointTests(TestCase):
         }
 
         with patch("orders.services.extract_order", return_value=extracted_payload), patch(
-            "orders.services.match_line_item",
-            return_value=[ScoredCandidate(catalog_item=self.catalog_item, score=97, proof_items=[])],
+            "orders.services.match_order_lines",
+            return_value=[[ScoredCandidate(catalog_item=self.catalog_item, score=97, proof_items=[])]],
         ):
             response = self.client.post(
                 "/api/orders/extract/", {"pasted_text": "send the usual part, LEGACY-PART-9"}, format="json"
@@ -393,3 +398,46 @@ class ExtractOrderEndpointTests(TestCase):
         self.assertTrue(
             any(item["kind"] == "availability" for item in candidate["proof_items"])
         )
+
+
+class ResetDemoDataTests(TestCase):
+    """Covers the two real gaps found by reading seed_sample_data.py before
+    building the reset: get_or_create silently not resetting setup config,
+    and decisions on sample orders' lines never being touched by re-seeding.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_reset_deletes_real_orders_restores_setup_and_clears_sample_decisions(self):
+        real_order = make_order(order_id="ord-live-test", status="ready")
+        real_order.is_simulated = False
+        real_order.save()
+
+        config = SetupConfiguration.objects.create(
+            auto_approve_threshold=60, price_flag_threshold=30
+        )
+
+        sample_order = make_order(order_id="ord-sample-test", status="review-needed")
+        sample_order.is_simulated = True
+        sample_order.save()
+        sample_line = make_line_item(sample_order, line_id="line-sample-test", status="matched")
+        MatchDecision.objects.create(
+            line_item=sample_line, decision="accepted", decided_at=timezone.now()
+        )
+
+        response = self.client.post("/api/orders/reset-demo/", {}, format="json")
+        self.assertEqual(response.status_code, 204)
+
+        self.assertFalse(OrderRecord.objects.filter(id="ord-live-test").exists())
+
+        config.refresh_from_db()
+        self.assertEqual(config.auto_approve_threshold, 85)
+        self.assertEqual(config.price_flag_threshold, 15)
+
+        self.assertEqual(
+            MatchDecision.objects.filter(line_item_id="line-sample-test").count(), 0
+        )
+
+        # Re-seeding should have restored the real 4 sample orders too.
+        self.assertTrue(OrderRecord.objects.filter(id="ord-vh-2026-0142").exists())

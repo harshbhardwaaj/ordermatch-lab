@@ -453,3 +453,8 @@ export async function resolveException(exceptionId: string): Promise<OrderExcept
   });
   return adaptException(raw);
 }
+
+export async function resetDemoData(): Promise<void> {
+  await apiFetch("/api/orders/reset-demo/", { method: "POST" });
+  catalogItemsCache = null;
+}
