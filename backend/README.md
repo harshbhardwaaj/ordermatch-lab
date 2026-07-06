@@ -5,7 +5,7 @@ Django + Django REST Framework + Postgres, hosted on Render. See
 `docs/spec-kit/clarifications.md` §7 for why this exists and how it's
 scoped.
 
-Real order extraction and matching (Claude API), backend-computed
+Real order extraction and matching (OpenAI API), backend-computed
 confidence, real eval computation, and setup-config-driven routing are
 Phase 12/13 work (`docs/spec-kit/tasks.md`). This scaffold (Phase 11)
 gives read-only API endpoints over the same grounded sample data already
@@ -79,6 +79,6 @@ python manage.py seed_sample_data
 
 ## Environment variables
 
-See `.env.example`. `ANTHROPIC_API_KEY` is read by backend code only
+See `.env.example`. `OPENAI_API_KEY` is read by backend code only
 (Phase 13 extraction/matching) — never expose it to frontend code or the
 browser.

@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from matching.models import MatchCandidate, MatchDecision
 
+from .extraction import ExtractionError
 from .models import OrderException, OrderLineItem, OrderRecord
 from .serializers import (
     OrderExceptionSerializer,
@@ -13,6 +14,7 @@ from .serializers import (
     OrderRecordListSerializer,
     OrderRecordSerializer,
 )
+from .services import create_order_from_pasted_text
 
 
 class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
@@ -50,6 +52,23 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
         order.status = "erp-ready"
         order.save()
         return Response(OrderRecordSerializer(order).data)
+
+    @action(detail=False, methods=["post"])
+    def extract(self, request):
+        """Real extraction + hybrid matching (T114-T121) for a pasted-text
+        order, replacing the client-side timer simulation. Returns the
+        full created order, same shape as GET /api/orders/<id>/, so the
+        frontend can go straight to rendering it. If extraction itself
+        fails (bad input, OpenAI timeout/rate-limit/malformed response),
+        no order is created at all (T124) and this returns a 502 with a
+        clear detail message the existing error+retry UI already handles.
+        """
+        pasted_text = request.data.get("pasted_text", "")
+        try:
+            order = create_order_from_pasted_text(pasted_text)
+        except ExtractionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response(OrderRecordSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
 class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):

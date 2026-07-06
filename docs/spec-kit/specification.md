@@ -175,8 +175,8 @@ A reviewer reaches the end and sees a clear, confident call to action to book a 
 - **FR-037**: Future real functionality MUST be able to support backend work such as document parsing, SKU matching, eval runs, file processing, persistence, and background jobs.
 - **FR-038**: Demo data MUST follow a grounded synthetic data policy: public procurement sources guide structure and terminology, market/company research guides customer profiles, and generated industrial order/catalog data provides safe controllable examples.
 - **FR-039**: The app MUST be honest that demo data is synthetic or sample data where relevant, without weakening the product story.
-- **FR-040**: Real order extraction MUST be performed server-side via the Claude API, called only from backend endpoints, never directly from the browser.
-- **FR-041**: SKU matching MUST use a hybrid approach: deterministic attribute/unit/part-number normalization rules first, combined with Claude-assisted semantic matching against the catalog for remaining ambiguity.
+- **FR-040**: Real order extraction MUST be performed server-side via the OpenAI API, called only from backend endpoints, never directly from the browser.
+- **FR-041**: SKU matching MUST use a hybrid approach: deterministic attribute/unit/part-number normalization rules first, combined with OpenAI-assisted semantic matching against the catalog for remaining ambiguity.
 - **FR-042**: Confidence MUST be computed server-side as a real per-line score derived from the matching pipeline. The raw score and any multi-band classification MUST remain backend-internal and MUST NOT be exposed to the frontend as new UI (no numeric badge, no confidence-band grid). The frontend MUST continue to express outcomes only through the existing two-signal model (clean match / risk flag).
 - **FR-043**: Setup/onboarding configuration (auto-approve threshold, price-flag threshold, rule toggles) MUST persist in Postgres and MUST be read at match time to gate real order routing, replacing the simulated setup flow's disconnection from the live workflow.
 - **FR-044**: Eval metrics MUST be computed for real by running the extraction/matching pipeline against the existing grounded, labeled sample dataset (`docs/data-research/`), not hardcoded.
@@ -241,6 +241,6 @@ A reviewer reaches the end and sees a clear, confident call to action to book a 
 - What happens if the candidate section pulls in too much background from the story bank and distracts from the product?
 - What happens if the final CTA feels too aggressive, too vague, or makes scheduling a call feel like too much effort?
 - What happens if future backend functionality is harder than expected because early frontend assumptions were not designed around an API boundary?
-- What happens if the Claude API times out, rate-limits, or returns a malformed response during extraction or matching?
+- What happens if the OpenAI API times out, rate-limits, or returns a malformed response during extraction or matching?
 - What happens if Render's backend service or database is temporarily unavailable?
 - What happens if a reviewer changes a setup threshold while an order is already mid-review?

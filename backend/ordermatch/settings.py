@@ -2,8 +2,8 @@
 Django settings for ordermatch project.
 
 See docs/spec-kit/plan.md's Backend Architecture section and
-docs/spec-kit/clarifications.md §7 for why this backend exists and how
-it's shaped: Django + DRF + Postgres, hosted on Render, Claude API called
+docs/spec-kit/clarifications.md §7-8 for why this backend exists and how
+it's shaped: Django + DRF + Postgres, hosted on Render, OpenAI API called
 server-side only.
 """
 
@@ -158,6 +158,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Called only from backend code (Claude API for extraction/matching-assist,
+# Called only from backend code (OpenAI API for extraction/matching-assist,
 # Phase 13). Never read this from frontend code or send it to the browser.
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")

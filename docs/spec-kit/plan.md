@@ -13,7 +13,7 @@ The plan intentionally starts with the visible product surface because the story
 
 ## Technical / Methodological Context
 
-**Stack / Approach**: Next.js with TypeScript for the frontend, Tailwind CSS for styling, shadcn/ui for accessible base components, lucide-react for icons, and Vercel for frontend deployment. The backend target is Python/Django with Postgres, hosted on Render, with the Claude API called server-side for order extraction and matching-assist, aligning with Comena's public stack of Python/Django, TypeScript, Postgres, and LLMs.
+**Stack / Approach**: Next.js with TypeScript for the frontend, Tailwind CSS for styling, shadcn/ui for accessible base components, lucide-react for icons, and Vercel for frontend deployment. The backend target is Python/Django with Postgres, hosted on Render, with the OpenAI API called server-side for order extraction and matching-assist, aligning with Comena's public stack of Python/Django, TypeScript, Postgres, and LLMs.
 
 **Primary dependencies**:
 
@@ -26,7 +26,7 @@ The plan intentionally starts with the visible product surface because the story
 - Python/Django backend for v0.6+ real functionality
 - Postgres for persisted orders, catalogs, eval runs, and customer/configuration data, managed via Render
 - Render for backend web service and Postgres hosting
-- Claude API (Anthropic) for order extraction and matching-assist, called only from backend endpoints, never directly from the browser
+- OpenAI API for order extraction and matching-assist, called only from backend endpoints, never directly from the browser
 - file upload/storage path for purchase orders, RFQs, PDFs, spreadsheets, and pasted text
 - background job mechanism if parsing, matching, or evals become long-running
 - optional later charting library for eval dashboards
@@ -193,7 +193,7 @@ Backend target:
 - Python/Django backend to align with Comena's public stack.
 - Postgres for persisted orders, catalogs, eval runs, and customer/setup configuration.
 - Hosted on Render (backend web service + managed Postgres), not Railway. See `docs/spec-kit/clarifications.md` §7 for why.
-- Claude API called server-side for extraction and matching-assist, never called directly from the browser.
+- OpenAI API called server-side for extraction and matching-assist, never called directly from the browser. See `docs/spec-kit/clarifications.md` §8 for why OpenAI over the originally-decided Claude API.
 - Background workers for document processing, matching, and eval runs if needed.
 - Next.js/Vercel remains the frontend deployment surface.
 
@@ -201,8 +201,8 @@ Core backend responsibilities for v1.0, mapped directly onto what `/thesis` alre
 
 - Accept order inputs through upload or sample/demo import flows.
 - Store orders, extracted fields, line items, catalog entries, match candidates, setup configuration, review decisions, and eval runs.
-- **Extraction**: call the Claude API to turn pasted/uploaded order text into structured line items, replacing the client-side timer simulation with real structured output.
-- **Matching**: implement the hybrid approach already described on the `/thesis` confidence slide: deterministic attribute/unit/part-number normalization rules first, then Claude-assisted semantic matching against the catalog for remaining ambiguity.
+- **Extraction**: call the OpenAI API to turn pasted/uploaded order text into structured line items, replacing the client-side timer simulation with real structured output.
+- **Matching**: implement the hybrid approach already described on the `/thesis` confidence slide: deterministic attribute/unit/part-number normalization rules first, then OpenAI-assisted semantic matching against the catalog for remaining ambiguity.
 - **Confidence**: compute a real per-line score from the matching pipeline. Compare it against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal; the frontend continues to express outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. Do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code in Phase 6, T055).
 - **Setup configuration**: persist auto-approve threshold, price-flag threshold, and rule toggles in Postgres, and read them at match time so they actually gate live order routing, replacing `/prototype/setup`'s disconnected simulated click-through.
 - **Evals**: compute real metrics by running the pipeline against the existing grounded, labeled sample dataset in `docs/data-research/`, rather than the hardcoded figures in `frontend/data/evals.ts`.
@@ -316,7 +316,7 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 - [BLOCKING BEFORE v1.0] Decide whether Django REST Framework, Django Ninja, or another Django API pattern fits best.
 - [BLOCKING BEFORE v1.0] Decide how to run background jobs for parsing, matching, and evals if they exceed normal request time.
 - [RESOLVED July 6, 2026] Backend hosting and database provider: Render (web service + managed Postgres). The original default was Railway (matches the AI Investment Analyst deploy), but that account's trial credit is nearly exhausted and its Limited Trial gates outbound network access behind GitHub re-verification or a payment method. Render needs no card for its free Postgres + web service tier. See `docs/spec-kit/clarifications.md` §7.
-- [RESOLVED July 6, 2026] LLM provider for extraction and matching-assist: Claude API (Anthropic), called only from backend endpoints. See `docs/spec-kit/clarifications.md` §7.
+- [RESOLVED July 6, 2026, SUPERSEDED July 6, 2026] LLM provider for extraction and matching-assist: originally Claude API (Anthropic) per `docs/spec-kit/clarifications.md` §7, switched to OpenAI API (`gpt-5.4-mini`) to use existing hackathon credit; called only from backend endpoints either way. See `docs/spec-kit/clarifications.md` §8.
 - [BLOCKING BEFORE v1.0] Decide how uploaded files are stored or whether v1.0 uses pasted/sample content only.
 - [OPEN, DEFERRED TO PHASE 13] Decide whether real eval numbers get any new frontend display, or stay backend-only/documented, consistent with the Phase 6 decision not to build a numeric eval dashboard (T052).
 - [HARSH INPUT BEFORE FINAL CTA] Provide or choose calendar booking tool/link.
@@ -337,7 +337,7 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 | Keep Comena in opening/end and reusable product language in core prototype | Makes the first version feel built for Comena while preserving later adaptability. | Naming Comena everywhere could make repurposing harder; staying generic everywhere would weaken the pitch. |
 | Candidate proof stays secondary | The product should sell Harsh through evidence. Candidate content should support, not dominate, the experience. | A full resume-style section would dilute the product and feel less tailored. |
 | Host the real backend on Render, not Railway | Render's free Postgres + web service tier needs no card and has no equivalent network-restriction gate. The Railway account already used for the AI Investment Analyst deploy is down to its last trial credit and would put both projects' uptime at risk. | Railway was the original default per this plan's earlier stack alignment, but its trial state (GitHub-verification-gated network access, $3.61 of $5 credit left, 0 trial days remaining) made it impractical without either verifying an account of uncertain standing or adding billing. |
-| Use the Claude API for real extraction and matching-assist | Real structured output from messy order text is exactly the extraction problem the engineering thesis already describes; computing this server-side keeps keys out of the browser and makes confidence a real model signal instead of a hardcoded timer. | Building a custom extraction/parsing model from scratch would be far more work for no accuracy benefit at this catalog scale, and would abandon the hybrid matching approach already narrated on the `/thesis` confidence slide. |
+| Use the OpenAI API for real extraction and matching-assist (originally planned as Claude API, see §8) | Real structured output from messy order text is exactly the extraction problem the engineering thesis already describes; computing this server-side keeps keys out of the browser and makes confidence a real model signal instead of a hardcoded timer. OpenAI over Claude specifically because Harsh has $35 of unused hackathon credit there, and the thesis narrative only ever says "a language model," never naming a provider, so nothing user-facing needed to change. | Building a custom extraction/parsing model from scratch would be far more work for no accuracy benefit at this catalog scale, and would abandon the hybrid matching approach already narrated on the `/thesis` confidence slide. Staying on Claude would have meant paying for a second provider's API from scratch with no offsetting credit. |
 | Compute confidence as a real backend score, but expose only the existing two-signal frontend model | Preserves the review UI already built and tested in Phase 5/6 while making the underlying score genuinely real and threshold-driven. Avoids reintroducing the 4-band badge UI already deleted as dead code (T055). | A visible numeric or 4-band confidence UI was considered and rejected: it would be new frontend surface area with no clear reviewer benefit over the existing resolve-or-defer picker, and would contradict the earlier decision that killed `lib/confidence.ts`. |
 | Persist setup-config thresholds in Postgres and use them to gate real routing | Turns `/prototype/setup` from a disconnected simulated click-through into something that actually drives the live order review, closing the gap noted when the eval dashboard was killed in Phase 6 (T052). | Keeping setup as a pure demo would leave two disconnected simulations instead of one coherent, backend-real product. |
 
@@ -350,7 +350,7 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 - **v0.5**: UX states, polish, responsiveness, copy pass.
 - **v0.6**: Backend scaffold with Python/Django, initial API boundary, and Postgres data model, deployed on Render.
 - **v0.7**: Backend-backed orders, catalog, setup configuration, review decisions, and persisted workflow state.
-- **v0.8**: Real extraction, hybrid matching, backend-computed confidence, and eval services implemented via the Claude API, enough to support the core demo.
+- **v0.8**: Real extraction, hybrid matching, backend-computed confidence, and eval services implemented via the OpenAI API, enough to support the core demo.
 - **v0.9**: Deployed full-stack beta with frontend on Vercel, backend and database on Render, realistic data, and end-to-end review flow.
 - **v1.0**: Finished deployed full-stack product with polished story, frontend, backend/API layer, grounded data, core extraction/matching/eval functionality, candidate proof, and CTA.
 - **v1.x**: Improve matching quality, eval depth, onboarding flows, and real data generation.

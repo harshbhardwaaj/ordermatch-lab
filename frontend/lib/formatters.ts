@@ -9,7 +9,14 @@ export function formatDate(
     day: "numeric",
   },
 ) {
-  return new Intl.DateTimeFormat(locale, options).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    // Real extraction (Phase 13) can hand back a delivery date the model
+    // could not resolve to a concrete calendar date; show it as typed
+    // rather than crashing the page on an unparseable value.
+    return String(value);
+  }
+  return new Intl.DateTimeFormat(locale, options).format(date);
 }
 
 export function formatStatusFromSlug(slug: string) {

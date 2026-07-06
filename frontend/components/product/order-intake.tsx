@@ -8,7 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransitionLink } from "@/components/view-transition-link";
-import { ApiError, fetchOrders } from "@/lib/api";
+import { ApiError, extractOrder, fetchOrders } from "@/lib/api";
 import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/orders";
 import { formatOrderSource } from "@/lib/formatters";
 import { getOrderProcessingHref, getOrderSummaryHref } from "@/lib/product-workflow";
@@ -70,7 +70,17 @@ function SampleOrderCard({ order }: { order: SyntheticOrderRecord }) {
   );
 }
 
-function OwnOrderPanel({ onSubmit }: { onSubmit: () => void }) {
+function OwnOrderPanel({
+  onSubmitPastedText,
+  onSubmitStub,
+  isSubmitting,
+  submitError,
+}: {
+  onSubmitPastedText: (pastedText: string) => void;
+  onSubmitStub: () => void;
+  isSubmitting: boolean;
+  submitError: string | null;
+}) {
   const [pastedText, setPastedText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -112,13 +122,16 @@ function OwnOrderPanel({ onSubmit }: { onSubmit: () => void }) {
             rows={5}
             className="w-full resize-none rounded-lg border border-[var(--om-border)] bg-[var(--om-bg)] p-3 text-sm leading-6 text-[var(--om-text)] outline-none placeholder:text-[var(--om-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
           />
+          {submitError ? (
+            <p className="mt-2 text-xs text-red-600">{submitError}</p>
+          ) : null}
           <Button
             type="button"
-            disabled={pastedText.trim().length === 0}
-            onClick={onSubmit}
+            disabled={pastedText.trim().length === 0 || isSubmitting}
+            onClick={() => onSubmitPastedText(pastedText)}
             className="mt-3 h-9 bg-[var(--om-accent)] text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
           >
-            Review this order
+            {isSubmitting ? "Reading order..." : "Review this order"}
           </Button>
         </TabsContent>
 
@@ -144,10 +157,13 @@ function OwnOrderPanel({ onSubmit }: { onSubmit: () => void }) {
             </span>
             <span className="font-semibold text-[var(--om-accent)]">Browse</span>
           </button>
+          <p className="mt-2 text-xs text-[var(--om-muted)]">
+            File upload is a preview only for now, paste the order text above for a real read.
+          </p>
           <Button
             type="button"
             disabled={!fileName}
-            onClick={onSubmit}
+            onClick={onSubmitStub}
             className="mt-3 h-9 bg-[var(--om-accent)] text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
           >
             Review this order
@@ -193,6 +209,8 @@ export function OrderIntake() {
   const [showOwnOrder, setShowOwnOrder] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [retryKey, setRetryKey] = useState(0);
+  const [isSubmittingOwnOrder, setIsSubmittingOwnOrder] = useState(false);
+  const [ownOrderSubmitError, setOwnOrderSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -214,7 +232,21 @@ export function OrderIntake() {
     };
   }, [retryKey]);
 
-  function submitOwnOrder() {
+  async function submitPastedOrder(pastedText: string) {
+    setOwnOrderSubmitError(null);
+    setIsSubmittingOwnOrder(true);
+    try {
+      const order = await extractOrder(pastedText);
+      navigateWithTransition(router, getOrderProcessingHref(order.id));
+    } catch (error) {
+      setOwnOrderSubmitError(
+        error instanceof ApiError ? error.detail : "Could not read that order. The backend may be offline.",
+      );
+      setIsSubmittingOwnOrder(false);
+    }
+  }
+
+  function submitStubOrder() {
     navigateWithTransition(router, getOrderProcessingHref(primaryWalkthroughOrderId));
   }
 
@@ -274,7 +306,12 @@ export function OrderIntake() {
           <div className="flex flex-col items-start gap-4">
             {showOwnOrder ? (
               <div className="w-full max-w-xl">
-                <OwnOrderPanel onSubmit={submitOwnOrder} />
+                <OwnOrderPanel
+                  onSubmitPastedText={submitPastedOrder}
+                  onSubmitStub={submitStubOrder}
+                  isSubmitting={isSubmittingOwnOrder}
+                  submitError={ownOrderSubmitError}
+                />
               </div>
             ) : (
               <Button

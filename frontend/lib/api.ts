@@ -360,6 +360,14 @@ export async function sendOrderToErp(orderId: string): Promise<SyntheticOrderRec
   return adaptOrder(raw);
 }
 
+export async function extractOrder(pastedText: string): Promise<SyntheticOrderRecord> {
+  const raw: RawOrder = await apiFetch("/api/orders/extract/", {
+    method: "POST",
+    body: JSON.stringify({ pasted_text: pastedText }),
+  });
+  return adaptOrder(raw);
+}
+
 let catalogItemsCache: CatalogItem[] | null = null;
 
 export async function ensureCatalogItemsLoaded(): Promise<CatalogItem[]> {

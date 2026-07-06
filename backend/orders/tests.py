@@ -1,10 +1,15 @@
-from django.test import TestCase
+import json
+from unittest.mock import patch
+
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from catalogs.models import CatalogItem
 from matching.models import MatchCandidate
+from matching.pipeline import ScoredCandidate
 
+from .extraction import ExtractionError, extract_order
 from .models import OrderException, OrderLineItem, OrderRecord
 
 
@@ -212,3 +217,179 @@ class SendToErpTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "erp-ready")
+
+
+def _fake_openai_response(payload: dict):
+    class _Message:
+        content = json.dumps(payload)
+
+    class _Choice:
+        message = _Message()
+
+    class _Response:
+        choices = [_Choice()]
+
+    return _Response()
+
+
+@override_settings(OPENAI_API_KEY="test-key")
+class ExtractionModuleTests(TestCase):
+    def test_empty_text_is_rejected_without_calling_openai(self):
+        with self.assertRaises(ExtractionError):
+            extract_order("   ")
+
+    def test_too_long_text_is_rejected_without_calling_openai(self):
+        with self.assertRaises(ExtractionError):
+            extract_order("x" * 8001)
+
+    def test_successful_extraction_returns_parsed_payload(self):
+        payload = {
+            "customer_name": "Test Customer GmbH",
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": "EUR",
+            "line_items": [
+                {
+                    "original_text": "50 M8 bolts",
+                    "description": "M8 bolts",
+                    "quantity": 50,
+                    "unit": "pcs",
+                    "customer_part_number": None,
+                    "requested_sku": None,
+                    "attributes": [],
+                }
+            ],
+        }
+        with patch("orders.extraction.OpenAI") as mock_openai_cls:
+            mock_openai_cls.return_value.chat.completions.create.return_value = (
+                _fake_openai_response(payload)
+            )
+            result = extract_order("send 50 M8 bolts")
+        self.assertEqual(result["customer_name"], "Test Customer GmbH")
+        self.assertEqual(len(result["line_items"]), 1)
+
+    def test_no_line_items_raises_extraction_error(self):
+        payload = {
+            "customer_name": None,
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": None,
+            "line_items": [],
+        }
+        with patch("orders.extraction.OpenAI") as mock_openai_cls:
+            mock_openai_cls.return_value.chat.completions.create.return_value = (
+                _fake_openai_response(payload)
+            )
+            with self.assertRaises(ExtractionError):
+                extract_order("this is not an order")
+
+    def test_malformed_response_raises_extraction_error(self):
+        class _BadResponse:
+            choices = []
+
+        with patch("orders.extraction.OpenAI") as mock_openai_cls:
+            mock_openai_cls.return_value.chat.completions.create.return_value = _BadResponse()
+            with self.assertRaises(ExtractionError):
+                extract_order("send 50 M8 bolts")
+
+
+@override_settings(OPENAI_API_KEY="test-key")
+class ExtractOrderEndpointTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.catalog_item = make_catalog_item()
+
+    def test_extract_endpoint_creates_order_with_routed_line_items(self):
+        extracted_payload = {
+            "customer_name": "Live Customer AG",
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": "EUR",
+            "line_items": [
+                {"original_text": "line one", "description": "confident item"},
+                {"original_text": "line two", "description": "ambiguous item"},
+            ],
+        }
+
+        def fake_match_line_item(extracted, catalog_items):
+            if extracted["description"] == "confident item":
+                return [ScoredCandidate(catalog_item=self.catalog_item, score=95, proof_items=[])]
+            return [ScoredCandidate(catalog_item=self.catalog_item, score=40, proof_items=[])]
+
+        with patch("orders.services.extract_order", return_value=extracted_payload), patch(
+            "orders.services.match_line_item", side_effect=fake_match_line_item
+        ):
+            response = self.client.post(
+                "/api/orders/extract/", {"pasted_text": "send some stuff"}, format="json"
+            )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["customer_name"], "Live Customer AG")
+        self.assertFalse(body["is_simulated"])
+        statuses = {line["original_text"]: line["status"] for line in body["line_items"]}
+        self.assertEqual(statuses["line one"], "matched")
+        self.assertEqual(statuses["line two"], "review-needed")
+        self.assertFalse(body["erp_ready"])
+
+    def test_extract_endpoint_returns_502_and_creates_nothing_on_failure(self):
+        with patch(
+            "orders.services.extract_order", side_effect=ExtractionError("boom")
+        ):
+            response = self.client.post(
+                "/api/orders/extract/", {"pasted_text": "send some stuff"}, format="json"
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("boom", response.json()["detail"])
+        self.assertEqual(OrderRecord.objects.count(), 0)
+
+    def test_discontinued_part_substitution_always_forces_review(self):
+        """A real gap found by testing: a line naming a discontinued part's
+        old customer part number can still get matched to its active
+        replacement (the semantic-match step reasons its way there from
+        the description), confidently enough to clear the auto-approve
+        threshold. That substitution must always route to human review,
+        regardless of score, since it's a different SKU than what was
+        literally asked for.
+        """
+        discontinued_item = make_catalog_item(item_id="cat-old-1", sku="OLD-SKU-001")
+        discontinued_item.status = "discontinued"
+        discontinued_item.customer_part_numbers = ["LEGACY-PART-9"]
+        discontinued_item.replacement_sku = self.catalog_item.sku
+        discontinued_item.save()
+
+        extracted_payload = {
+            "customer_name": "Live Customer AG",
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": "EUR",
+            "line_items": [
+                {
+                    "original_text": "the usual part, LEGACY-PART-9",
+                    "description": "legacy part",
+                    "customer_part_number": "LEGACY-PART-9",
+                }
+            ],
+        }
+
+        with patch("orders.services.extract_order", return_value=extracted_payload), patch(
+            "orders.services.match_line_item",
+            return_value=[ScoredCandidate(catalog_item=self.catalog_item, score=97, proof_items=[])],
+        ):
+            response = self.client.post(
+                "/api/orders/extract/", {"pasted_text": "send the usual part, LEGACY-PART-9"}, format="json"
+            )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["line_items"][0]["status"], "review-needed")
+        self.assertFalse(body["erp_ready"])
+        candidate = body["line_items"][0]["match_candidates"][0]
+        self.assertTrue(
+            any(item["kind"] == "availability" for item in candidate["proof_items"])
+        )
