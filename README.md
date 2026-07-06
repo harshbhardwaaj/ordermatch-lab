@@ -25,14 +25,13 @@ The prototype demonstrates the workflow Comena's product likely needs: reading a
 This is a v0.x frontend-only prototype, and it stays honest about what that means:
 
 - Real: the interaction design, the reasoning behind confidence, matching, and evals (grounded in cited research under `docs/research/`), and the candidate proof links. The AI Investment Analyst and CV-JD Fit Scorer are live deployed tools, not mockups.
-- Simulated: order extraction and SKU matching run against a small synthetic, grounded dataset (`frontend/data/`), with client-side timers standing in for a real pipeline. There is no backend yet, nothing here is actually parsed, matched by a model, or sent to a real ERP.
-- Planned: a real Django and Postgres backend (see `docs/spec-kit/tasks.md`, Phase 11 onward) to replace the simulated matching with the real thing.
+- Simulated: the frontend still runs entirely on its own local synthetic dataset (`frontend/data/`), with client-side timers standing in for a real pipeline. The two are not wired together yet, so nothing a reviewer sees in the app is actually parsed, matched by a model, or sent to a real ERP.
+- In progress: a real Django REST Framework + Postgres backend now exists in `backend/` (see `backend/README.md`), with models and read-only API endpoints mirroring the frontend's data shapes and seeded from the same grounded sample data. It runs and is tested locally but is not yet deployed, and the frontend does not call it yet. Real extraction and matching via the Claude API, backend-computed confidence, and real eval computation are still ahead (see `docs/spec-kit/tasks.md`, Phase 12 onward).
 
 ## Tech stack
 
-- Next.js 15 (App Router), React 19, TypeScript
-- Tailwind CSS
-- No backend yet, frontend-only v0.x as described above
+- Frontend: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
+- Backend: Django + Django REST Framework, Postgres (see `backend/README.md`), targeting Render for deployment. Scaffolded and running locally; not yet deployed or connected to the frontend.
 
 ## Local Development
 
@@ -57,6 +56,12 @@ npm run typecheck
 npm run lint
 npm run build
 ```
+
+### Backend (optional, not yet required to run the app)
+
+The frontend above runs fully on its own local data and does not need the
+backend. See `backend/README.md` if you want to run the Django API
+scaffold locally too.
 
 ## Project docs
 

@@ -3,7 +3,7 @@
 **Spec**: `docs/spec-kit/specification.md`
 **Constitution**: `docs/spec-kit/constitution.md`
 **Clarifications**: `docs/spec-kit/clarifications.md`
-**Date**: July 2, 2026
+**Date**: July 2, 2026 (Backend Architecture section revised July 6, 2026, see `docs/spec-kit/clarifications.md` §7)
 
 ## Summary
 
@@ -13,7 +13,7 @@ The plan intentionally starts with the visible product surface because the story
 
 ## Technical / Methodological Context
 
-**Stack / Approach**: Next.js with TypeScript for the frontend, Tailwind CSS for styling, shadcn/ui for accessible base components, lucide-react for icons, and Vercel for frontend deployment. The backend target is Python/Django with Postgres and LLM services behind backend endpoints, aligning with Comena's public stack of Python/Django, TypeScript, Postgres, and LLMs.
+**Stack / Approach**: Next.js with TypeScript for the frontend, Tailwind CSS for styling, shadcn/ui for accessible base components, lucide-react for icons, and Vercel for frontend deployment. The backend target is Python/Django with Postgres, hosted on Render, with the Claude API called server-side for order extraction and matching-assist, aligning with Comena's public stack of Python/Django, TypeScript, Postgres, and LLMs.
 
 **Primary dependencies**:
 
@@ -24,8 +24,9 @@ The plan intentionally starts with the visible product surface because the story
 - lucide-react
 - local JSON/TypeScript mock data for v0
 - Python/Django backend for v0.6+ real functionality
-- Postgres for persisted orders, catalogs, eval runs, and customer/configuration data
-- LLM provider integration through backend endpoints, not directly from the browser
+- Postgres for persisted orders, catalogs, eval runs, and customer/configuration data, managed via Render
+- Render for backend web service and Postgres hosting
+- Claude API (Anthropic) for order extraction and matching-assist, called only from backend endpoints, never directly from the browser
 - file upload/storage path for purchase orders, RFQs, PDFs, spreadsheets, and pasted text
 - background job mechanism if parsing, matching, or evals become long-running
 - optional later charting library for eval dashboards
@@ -190,20 +191,25 @@ v0.6+ should introduce a real backend/API layer. The architecture should make re
 Backend target:
 
 - Python/Django backend to align with Comena's public stack.
-- Postgres for persisted orders, catalogs, eval runs, and customer configuration.
-- LLM services behind backend endpoints, not called directly from the browser.
+- Postgres for persisted orders, catalogs, eval runs, and customer/setup configuration.
+- Hosted on Render (backend web service + managed Postgres), not Railway. See `docs/spec-kit/clarifications.md` §7 for why.
+- Claude API called server-side for extraction and matching-assist, never called directly from the browser.
 - Background workers for document processing, matching, and eval runs if needed.
 - Next.js/Vercel remains the frontend deployment surface.
 
-Core backend responsibilities for v1.0:
+Core backend responsibilities for v1.0, mapped directly onto what `/thesis` already narrates rather than a new invented approach:
 
 - Accept order inputs through upload or sample/demo import flows.
-- Store orders, extracted fields, line items, catalog entries, match candidates, exceptions, and eval runs.
-- Run or simulate a real extraction pipeline from uploaded/pasted order content.
-- Run SKU matching against a catalog using deterministic logic and/or LLM-assisted retrieval where appropriate.
+- Store orders, extracted fields, line items, catalog entries, match candidates, setup configuration, review decisions, and eval runs.
+- **Extraction**: call the Claude API to turn pasted/uploaded order text into structured line items, replacing the client-side timer simulation with real structured output.
+- **Matching**: implement the hybrid approach already described on the `/thesis` confidence slide: deterministic attribute/unit/part-number normalization rules first, then Claude-assisted semantic matching against the catalog for remaining ambiguity.
+- **Confidence**: compute a real per-line score from the matching pipeline. Compare it against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal; the frontend continues to express outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. Do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code in Phase 6, T055).
+- **Setup configuration**: persist auto-approve threshold, price-flag threshold, and rule toggles in Postgres, and read them at match time so they actually gate live order routing, replacing `/prototype/setup`'s disconnected simulated click-through.
+- **Evals**: compute real metrics by running the pipeline against the existing grounded, labeled sample dataset in `docs/data-research/`, rather than the hardcoded figures in `frontend/data/evals.ts`.
 - Persist human review decisions such as accepted match, rejected match, corrected SKU, resolved exception, and ERP-ready status.
-- Expose eval metrics through API endpoints so the frontend quality dashboard is not only static.
+- Expose eval metrics through API endpoints so real numbers exist even if the frontend keeps them out of a numeric dashboard, consistent with the Phase 6 decision not to build one (T052).
 - Keep secrets, LLM API keys, and provider calls out of browser code.
+- Define real error/recovery behavior for LLM provider timeout, rate limiting, malformed responses, and Render service/database unavailability. This is now a real requirement, not a hypothetical one: Phase 13's original T058 deferred graceful degradation specifically because "there is no backend yet for these failures to be real." That reasoning no longer holds once extraction/matching call a real external API.
 
 Possible backend layout after v0.6:
 
@@ -309,8 +315,10 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 - [LATER BACKEND PHASE] Investigate deeper data sources through TUM OPAC, Orbis, TED bulk data, OCDS registry, and public catalog examples.
 - [BLOCKING BEFORE v1.0] Decide whether Django REST Framework, Django Ninja, or another Django API pattern fits best.
 - [BLOCKING BEFORE v1.0] Decide how to run background jobs for parsing, matching, and evals if they exceed normal request time.
-- [BLOCKING BEFORE v1.0] Choose backend hosting and database provider.
+- [RESOLVED July 6, 2026] Backend hosting and database provider: Render (web service + managed Postgres). The original default was Railway (matches the AI Investment Analyst deploy), but that account's trial credit is nearly exhausted and its Limited Trial gates outbound network access behind GitHub re-verification or a payment method. Render needs no card for its free Postgres + web service tier. See `docs/spec-kit/clarifications.md` §7.
+- [RESOLVED July 6, 2026] LLM provider for extraction and matching-assist: Claude API (Anthropic), called only from backend endpoints. See `docs/spec-kit/clarifications.md` §7.
 - [BLOCKING BEFORE v1.0] Decide how uploaded files are stored or whether v1.0 uses pasted/sample content only.
+- [OPEN, DEFERRED TO PHASE 13] Decide whether real eval numbers get any new frontend display, or stay backend-only/documented, consistent with the Phase 6 decision not to build a numeric eval dashboard (T052).
 - [HARSH INPUT BEFORE FINAL CTA] Provide or choose calendar booking tool/link.
 - [HARSH INPUT BEFORE CANDIDATE SECTION FINAL COPY] Provide final preferred GitHub, LinkedIn, resume, project links, and any social links worth including.
 
@@ -328,6 +336,10 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 | Use grounded synthetic data | Real B2B PO/SKU data is hard to access and private data is unsafe. Grounding reduces fake-data bias while keeping examples controllable. | Pure synthetic data could be too clean; pure public procurement data may not map to SKU matching. |
 | Keep Comena in opening/end and reusable product language in core prototype | Makes the first version feel built for Comena while preserving later adaptability. | Naming Comena everywhere could make repurposing harder; staying generic everywhere would weaken the pitch. |
 | Candidate proof stays secondary | The product should sell Harsh through evidence. Candidate content should support, not dominate, the experience. | A full resume-style section would dilute the product and feel less tailored. |
+| Host the real backend on Render, not Railway | Render's free Postgres + web service tier needs no card and has no equivalent network-restriction gate. The Railway account already used for the AI Investment Analyst deploy is down to its last trial credit and would put both projects' uptime at risk. | Railway was the original default per this plan's earlier stack alignment, but its trial state (GitHub-verification-gated network access, $3.61 of $5 credit left, 0 trial days remaining) made it impractical without either verifying an account of uncertain standing or adding billing. |
+| Use the Claude API for real extraction and matching-assist | Real structured output from messy order text is exactly the extraction problem the engineering thesis already describes; computing this server-side keeps keys out of the browser and makes confidence a real model signal instead of a hardcoded timer. | Building a custom extraction/parsing model from scratch would be far more work for no accuracy benefit at this catalog scale, and would abandon the hybrid matching approach already narrated on the `/thesis` confidence slide. |
+| Compute confidence as a real backend score, but expose only the existing two-signal frontend model | Preserves the review UI already built and tested in Phase 5/6 while making the underlying score genuinely real and threshold-driven. Avoids reintroducing the 4-band badge UI already deleted as dead code (T055). | A visible numeric or 4-band confidence UI was considered and rejected: it would be new frontend surface area with no clear reviewer benefit over the existing resolve-or-defer picker, and would contradict the earlier decision that killed `lib/confidence.ts`. |
+| Persist setup-config thresholds in Postgres and use them to gate real routing | Turns `/prototype/setup` from a disconnected simulated click-through into something that actually drives the live order review, closing the gap noted when the eval dashboard was killed in Phase 6 (T052). | Keeping setup as a pure demo would leave two disconnected simulations instead of one coherent, backend-real product. |
 
 ## Version Strategy
 
@@ -336,10 +348,10 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 - **v0.3**: Narrative shell and static product screens.
 - **v0.4**: Clickable prototype with simulated state changes.
 - **v0.5**: UX states, polish, responsiveness, copy pass.
-- **v0.6**: Backend scaffold with Python/Django, initial API boundary, and Postgres data model.
-- **v0.7**: Backend-backed orders, catalog, review decisions, and persisted workflow state.
-- **v0.8**: Extraction, matching, and eval services implemented enough to support the core demo.
-- **v0.9**: Deployed full-stack beta with frontend, backend, database, realistic data, and end-to-end review flow.
+- **v0.6**: Backend scaffold with Python/Django, initial API boundary, and Postgres data model, deployed on Render.
+- **v0.7**: Backend-backed orders, catalog, setup configuration, review decisions, and persisted workflow state.
+- **v0.8**: Real extraction, hybrid matching, backend-computed confidence, and eval services implemented via the Claude API, enough to support the core demo.
+- **v0.9**: Deployed full-stack beta with frontend on Vercel, backend and database on Render, realistic data, and end-to-end review flow.
 - **v1.0**: Finished deployed full-stack product with polished story, frontend, backend/API layer, grounded data, core extraction/matching/eval functionality, candidate proof, and CTA.
 - **v1.x**: Improve matching quality, eval depth, onboarding flows, and real data generation.
 
