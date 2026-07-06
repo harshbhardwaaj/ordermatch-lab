@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, CheckCircle2, FileText, Mail, RotateCcw, UserRound } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
 import { cn } from "@/lib/utils";
@@ -35,47 +36,6 @@ type ConnectorPoints = {
   aiToHuman: { from: Point; to: Point };
   humanToErp: { from: Point; to: Point };
 };
-
-function ProjectMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-6"
-      fill="none"
-      viewBox="0 0 48 48"
-    >
-      <circle cx="24" cy="24" fill="var(--om-accent)" r="20" />
-      <circle cx="18" cy="18" fill="var(--om-accent-text)" r="4" />
-      <circle
-        cx="30"
-        cy="18"
-        fill="var(--om-accent-text)"
-        opacity="0.72"
-        r="4"
-      />
-      <circle
-        cx="18"
-        cy="30"
-        fill="var(--om-accent-text)"
-        opacity="0.72"
-        r="4"
-      />
-      <path
-        d="M22 28 30.5 19.5"
-        stroke="var(--om-bg)"
-        strokeLinecap="round"
-        strokeWidth="3.2"
-      />
-      <path
-        d="m27 29.5 3.4 3.2L37 25"
-        stroke="var(--om-accent-text)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
-    </svg>
-  );
-}
 
 const FlowCard = forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>(
   function FlowCard({ children, className }, ref) {
@@ -435,7 +395,7 @@ export function PrototypeWorkflow() {
             >
               <div className="flex items-center gap-2">
                 <span className="flex size-8 items-center justify-center rounded-xl bg-[var(--om-accent)] text-[var(--om-accent-text)]">
-                  <ProjectMark />
+                  <BrandMark className="size-6" />
                 </span>
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[var(--om-accent)]">
                   AI-assisted review

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ExternalLink, Layers, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ExternalLink, Layers, Search, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { BrandMark } from "@/components/brand-mark";
@@ -394,6 +394,19 @@ function EvalsDemo() {
           </p>
         </div>
       )}
+
+      <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-[var(--om-accent)]/30 bg-[var(--om-accent-soft)] p-3">
+        <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--om-accent)]" />
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--om-accent)]">
+            Real eval, not simulated
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--om-muted)]">
+            The grouping above illustrates the method. Separately, a real eval suite runs this
+            pipeline against labeled sample orders and checks the results, not just demoed once.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
