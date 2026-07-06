@@ -2,7 +2,7 @@
 
 **Plan**: `docs/spec-kit/plan.md`
 **Spec**: `docs/spec-kit/specification.md`
-**Date**: July 2, 2026
+**Date**: July 2, 2026 (Phases 11-13 revised July 6, 2026, see `docs/spec-kit/clarifications.md` §7)
 
 ## Phase 1: Planning Lock, Research, And Design Foundation
 
@@ -201,20 +201,20 @@
 
 ## Phase 11: Backend Scaffold (v0.6)
 
-**Purpose**: Introduce the real backend/API layer required for v1.0.
+**Purpose**: Introduce the real backend/API layer required for v1.0, hosted on Render. Scope and rationale recorded in `docs/spec-kit/clarifications.md` §7.
 
 - [ ] T094 Decide Django API pattern: Django REST Framework, Django Ninja, or another Django approach.
-- [ ] T095 Decide backend hosting and database provider.
-- [ ] T096 Scaffold Python/Django backend in a separate backend folder.
-- [ ] T097 Add backend environment configuration and secret-handling pattern.
-- [ ] T098 Add Postgres configuration for local and deployed environments.
-- [ ] T099 Define backend models for orders, order lines, catalog items, match candidates, exceptions, review decisions, setup rules, uploaded inputs, and eval runs.
-- [ ] T100 Create initial API endpoints that mirror the frontend mock data shape.
+- [ ] T095 Provision a Render web service (backend) and a Render managed Postgres database.
+- [ ] T096 Scaffold Python/Django backend in a separate `backend/` folder using the chosen API pattern.
+- [ ] T097 Add backend environment configuration and secret-handling pattern, including the Claude API key, read from environment variables only, never committed.
+- [ ] T098 Configure Postgres connection for local development and the Render-hosted deployment.
+- [ ] T099 Define backend models for orders, order lines, catalog items, match candidates, setup configuration (auto-approve threshold, price-flag threshold, rule toggles), review decisions, and eval runs.
+- [ ] T100 Create initial API endpoints that mirror the frontend mock data shape (orders, catalog, setup config).
 - [ ] T101 Add API contract documentation or typed schemas so frontend and backend stay aligned.
-- [ ] T102 Add seed-data loading from grounded synthetic examples.
-- [ ] T103 Update frontend data access layer so frontend can switch between local mock data and backend API data.
+- [ ] T102 Add seed-data loading from the existing grounded synthetic examples (`frontend/data/`, `docs/data-research/`).
+- [ ] T103 Update frontend data access layer so frontend can switch between local mock data and backend API data via an environment flag.
 
-**Checkpoint**: Backend exists, loads sample data, documents its API shape, and can serve the same core data shape used by the frontend.
+**Checkpoint**: Backend exists on Render, loads sample data, documents its API shape, and can serve the same core data shape used by the frontend.
 
 ---
 
@@ -222,40 +222,40 @@
 
 **Purpose**: Replace key mocked workflow state with persisted backend behavior.
 
-- [ ] T104 Persist orders, line items, catalog items, match candidates, exceptions, setup rules, and review decisions.
+- [ ] T104 Persist orders, line items, catalog items, match candidates, setup configuration, and review decisions in Postgres.
 - [ ] T105 Add API endpoint to list orders/RFQs.
 - [ ] T106 Add API endpoint to retrieve order review details.
-- [ ] T107 Add API endpoint to accept or reject a SKU match.
-- [ ] T108 Add API endpoint to resolve an exception.
-- [ ] T109 Add API endpoint to compute or retrieve ERP-readiness status.
-- [ ] T110 Add API endpoint to retrieve setup/onboarding configuration.
-- [ ] T111 Update frontend order queue, review screens, and onboarding/setup view to use backend-backed state.
-- [ ] T112 Add backend error handling and frontend recovery states for API failures.
-- [ ] T113 Add backend tests or endpoint checks for order listing, match decision persistence, exception resolution, and ERP-readiness behavior.
+- [ ] T107 Add API endpoint to accept, reject, or correct a SKU match.
+- [ ] T108 Add API endpoint to resolve a flagged/exception line item.
+- [ ] T109 Add API endpoint to compute or retrieve ERP-readiness status from persisted state.
+- [ ] T110 Add API endpoints to read and update setup/onboarding configuration (auto-approve threshold, price-flag threshold, rule toggles).
+- [ ] T111 Update frontend order-intake, processing, summary, waiting-queue, and setup screens to read/write backend-backed state instead of local mock functions.
+- [ ] T112 Add backend error handling and frontend recovery states for API/database failures (Render service unavailable, database connection failure). This is a real requirement now, not a hypothetical one, since a real backend exists to actually fail.
+- [ ] T113 Add backend tests or endpoint checks for order listing, match decision persistence, exception resolution, setup-config updates, and ERP-readiness behavior.
 
-**Checkpoint**: The core review workflow is backend-backed, persists state, and has basic checks for the behavior that matters.
+**Checkpoint**: The core review workflow is backend-backed, persists state including setup configuration, and has basic checks for the behavior that matters.
 
 ---
 
-## Phase 13: Extraction, Matching, And Eval Functionality (v0.8)
+## Phase 13: Extraction, Matching, Confidence, And Real Evals (v0.8)
 
-**Purpose**: Add enough real functionality to support the v1 engineering thesis.
+**Purpose**: Implement the real functionality already narrated in `/thesis`, via the Claude API, rather than a newly invented approach. Scope and rationale recorded in `docs/spec-kit/clarifications.md` §7.
 
 - [ ] T114 Decide v1 input scope: upload files, pasted text, sample import, or a combination.
-- [ ] T115 Implement sample/demo import flow that creates backend orders from grounded synthetic examples.
-- [ ] T116 Implement input validation for uploaded, pasted, or sample order content.
-- [ ] T117 Implement initial extraction logic for pasted/sample order content.
-- [ ] T118 Implement deterministic normalization helpers for units, quantities, common abbreviations, and product attributes.
-- [ ] T119 Implement initial SKU matching logic against the catalog.
-- [ ] T120 Implement confidence scoring rules for high-confidence, review-needed, blocked, and no-match outcomes.
-- [ ] T121 Implement traceability output for SKU match reasons.
-- [ ] T122 Implement eval run generation from known sample ground truth.
-- [ ] T123 Define minimum v1 eval thresholds or quality expectations for sample data, such as no false confident blocked cases and correct top-3 match for known ambiguous cases.
-- [ ] T124 Connect frontend eval dashboard to backend eval outputs.
+- [ ] T115 Implement input validation for uploaded, pasted, or sample order content before it is sent to the extraction call.
+- [ ] T116 Implement real extraction via the Claude API: turn pasted/uploaded order text into structured line items, replacing the client-side timer simulation.
+- [ ] T117 Implement deterministic normalization helpers for units, quantities, common abbreviations, and product attributes, as the first stage of matching.
+- [ ] T118 Implement hybrid SKU matching: deterministic attribute/part-number rules first, then Claude-assisted semantic matching against the catalog for remaining ambiguity.
+- [ ] T119 Implement real per-line confidence scoring from the matching pipeline, and gate routing (auto-approved vs. flagged for review) against the persisted setup-config thresholds from T110.
+- [ ] T120 Keep the confidence score and any internal band classification backend-only; do not add new frontend UI beyond the existing two-signal (clean match / risk flag) model already used by the resolve-or-defer picker.
+- [ ] T121 Implement traceability output for SKU match reasons (size, material, standard, unit, synonym, customer part number, catalog attribute) so the existing "why this matched" panel renders real reasons instead of sample-data reasons.
+- [ ] T122 Implement real eval run generation: run the extraction/matching pipeline against the grounded, labeled sample dataset in `docs/data-research/` and compute real extraction accuracy, SKU top-1 accuracy, SKU top-3 recall, human correction rate, and false confident match rate.
+- [ ] T123 Define minimum v1 eval thresholds or quality expectations for the sample dataset, such as no false confident blocked cases and correct top-3 match for known ambiguous cases.
+- [ ] T124 Add real error/recovery states for Claude API timeout, rate limiting, and malformed responses, surfaced as specific frontend states rather than silent failure.
 - [ ] T125 Add backend tests or scripts for extraction, normalization, matching, confidence scoring, traceability, and eval generation on the sample dataset.
-- [ ] T126 Document what is real, what is simulated, what is sample-only, and what remains v1.x.
+- [ ] T126 Decide whether real eval numbers get a lightweight frontend display (for example, updating the existing evals thesis slide with live numbers) or stay backend-only/documented, consistent with the Phase 6 decision not to build a numeric eval dashboard (T052). Document what is real, what is simulated, what is sample-only, and what remains v1.x either way.
 
-**Checkpoint**: Backend functionality supports extraction, matching, confidence, traceability, and evals enough for the core demo, with checks that prevent fake confidence.
+**Checkpoint**: Backend functionality supports real extraction, hybrid matching, backend-computed confidence, traceability, and evals enough for the core demo, with no new frontend confidence UI and checks that prevent fake confidence.
 
 ---
 
@@ -264,13 +264,13 @@
 **Purpose**: Deploy and test the full-stack system before declaring v1.0.
 
 - [ ] T127 Deploy frontend to Vercel.
-- [ ] T128 Deploy backend to selected provider.
-- [ ] T129 Provision production database.
-- [ ] T130 Configure environment variables and secret management.
+- [ ] T128 Deploy backend to Render.
+- [ ] T129 Provision production Postgres database on Render.
+- [ ] T130 Configure environment variables and secret management on Vercel and Render, including the Claude API key.
 - [ ] T131 Run smoke test for static and narrative routes that do not require API calls.
 - [ ] T132 Run smoke test for backend API endpoints.
 - [ ] T133 Run full workflow test: open app, import/sample order, review matches, resolve exception, reach ERP-ready state, view eval metrics.
-- [ ] T134 Test deployment failure modes: backend unavailable, database unavailable, slow eval run, broken document preview, and unavailable calendar/project links.
+- [ ] T134 Test deployment failure modes: backend unavailable, database unavailable, Claude API unavailable/rate-limited, slow eval run, broken document preview, and unavailable calendar/project links.
 - [ ] T135 Add user-facing error states for deployment/API failures.
 - [ ] T136 Validate no secrets, API keys, raw backend errors, private data, or misleading Comena claims are exposed.
 
