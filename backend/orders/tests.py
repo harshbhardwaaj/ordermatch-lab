@@ -399,6 +399,90 @@ class ExtractOrderEndpointTests(TestCase):
             any(item["kind"] == "availability" for item in candidate["proof_items"])
         )
 
+    def test_discontinued_substitution_with_no_stated_identifier_still_forces_review(self):
+        """A second real gap found via a T122 eval run against the labeled
+        sample dataset: a line can describe a discontinued part in free
+        text alone, with no old part number or SKU stated at all. The
+        semantic-match step reasons its way to the active replacement, and
+        the original stated-identifier-only substitution guard never had
+        anything to look up, so it never fired. Any LLM-matched candidate
+        that lands on a known replacement SKU must force review too, not
+        just ones the customer explicitly named.
+        """
+        discontinued_item = make_catalog_item(item_id="cat-old-2", sku="OLD-SKU-002")
+        discontinued_item.status = "replacement-available"
+        discontinued_item.replacement_sku = self.catalog_item.sku
+        discontinued_item.save()
+
+        extracted_payload = {
+            "customer_name": "Live Customer AG",
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": "EUR",
+            "line_items": [
+                {
+                    "original_text": "the old-style bolt, no part number given",
+                    "description": "old-style bolt",
+                    "customer_part_number": None,
+                    "requested_sku": None,
+                }
+            ],
+        }
+
+        with patch("orders.services.extract_order", return_value=extracted_payload), patch(
+            "orders.services.match_order_lines",
+            return_value=[
+                [ScoredCandidate(catalog_item=self.catalog_item, score=90, proof_items=[], matched_via="llm")]
+            ],
+        ):
+            response = self.client.post(
+                "/api/orders/extract/", {"pasted_text": "send the old-style bolt"}, format="json"
+            )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["line_items"][0]["status"], "review-needed")
+
+    def test_close_runner_up_forces_review_even_above_threshold(self):
+        """A third real gap found the same way: the deterministic path
+        already refuses to skip the LLM call when a candidate isn't ahead
+        of its runner-up by CONFIDENT_MARGIN, but that margin was never
+        re-checked at the final auto-approve decision for LLM-resolved
+        lines. A single, high-scoring LLM candidate auto-approved even for
+        a line built to be ambiguous, as long as nothing else was returned
+        alongside it to compare against.
+        """
+        runner_up_item = make_catalog_item(item_id="cat-runner-up", sku="OM-TEST-002")
+
+        extracted_payload = {
+            "customer_name": "Live Customer AG",
+            "customer_reference": None,
+            "requested_delivery_date": None,
+            "delivery_location": None,
+            "currency": "EUR",
+            "line_items": [
+                {"original_text": "ambiguous item", "description": "ambiguous item"},
+            ],
+        }
+
+        with patch("orders.services.extract_order", return_value=extracted_payload), patch(
+            "orders.services.match_order_lines",
+            return_value=[
+                [
+                    ScoredCandidate(catalog_item=self.catalog_item, score=90, proof_items=[], matched_via="llm"),
+                    ScoredCandidate(catalog_item=runner_up_item, score=80, proof_items=[], matched_via="llm"),
+                ]
+            ],
+        ):
+            response = self.client.post(
+                "/api/orders/extract/", {"pasted_text": "send the ambiguous item"}, format="json"
+            )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["line_items"][0]["status"], "review-needed")
+
 
 class ResetDemoDataTests(TestCase):
     """Covers the two real gaps found by reading seed_sample_data.py before

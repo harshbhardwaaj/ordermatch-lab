@@ -67,6 +67,11 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             order = create_order_from_pasted_text(pasted_text)
         except ExtractionError as exc:
+            # Safe to surface directly: every ExtractionError is raised with
+            # a hardcoded, curated literal in extraction.py, never a wrapped
+            # exception's raw message or traceback. Keep it that way — never
+            # add a raise ExtractionError(f"...{some_exc}...") call site, or
+            # this stops being true.
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(OrderRecordSerializer(order).data, status=status.HTTP_201_CREATED)
 

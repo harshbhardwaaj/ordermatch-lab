@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from catalogs.models import CatalogItem
 from matching.models import MatchCandidate, MatchDecision
-from matching.pipeline import match_order_lines
+from matching.pipeline import CONFIDENT_MARGIN, match_order_lines
 from onboarding.models import SetupConfiguration
 
 from .extraction import extract_order
@@ -58,13 +58,65 @@ def _discontinued_replacement_map() -> dict[str, str]:
     customer named with no flag at all. Discontinued substitutions always
     force human review instead (see the call site below), independent of
     match score.
+
+    Covers both "discontinued" and "replacement-available" catalog
+    statuses (CatalogItemStatus): found via a real eval run (T122) that
+    only checking "discontinued" silently missed a real
+    "replacement-available" item in the sample catalog, since both carry
+    a replacement_sku and both are excluded from the active-items match
+    pool the same way.
     """
     mapping = {}
-    for item in CatalogItem.objects.filter(status="discontinued").exclude(replacement_sku=""):
+    for item in CatalogItem.objects.exclude(status="active").exclude(replacement_sku=""):
         for part_number in item.customer_part_numbers:
             mapping[_norm(part_number)] = item.replacement_sku
         mapping[_norm(item.sku)] = item.replacement_sku
     return mapping
+
+
+def _is_substitution(candidate, stated_replacement_sku: str | None, replacement_skus: set[str]) -> bool:
+    """True when this candidate is a replacement for a discontinued part,
+    caught one of two ways: the customer literally named the old part
+    (stated_replacement_sku, from _discontinued_replacement_map), or the
+    match came from the LLM reasoning from the description alone rather
+    than an exact identifier hit (matched_via == "llm") and happens to land
+    on a SKU that is *someone's* designated replacement.
+
+    Found by running a real eval against the labeled sample dataset (T122):
+    the first version of this check (stated-identifier only) missed a real
+    case where the customer described a discontinued part in free text
+    with no part number at all ("elbow ... old series"), and a second case
+    where a stated legacy part number was extracted into a generic
+    attribute instead of customer_part_number. Both slipped through as
+    silent, confident substitutions. The matched_via=="llm" condition is
+    what catches these: a deterministic hit only matches active catalog
+    identifiers directly, so it can never land on a replacement_sku by
+    coincidence the way an LLM's free-text reasoning can.
+    """
+    sku = candidate.catalog_item.sku
+    if stated_replacement_sku and sku == stated_replacement_sku:
+        return True
+    return candidate.matched_via == "llm" and sku in replacement_skus
+
+
+def _is_confidently_ahead(candidates) -> bool:
+    """Whether the top candidate beats the runner-up by CONFIDENT_MARGIN,
+    same guard _is_confident applies before skipping the LLM call
+    entirely, applied again here at the final auto-approve decision.
+
+    Found via the same eval run as _is_substitution above: a
+    deterministically-confident line only ever reaches here as a
+    single-candidate list (the margin check already happened before the
+    LLM call was skipped), so this is a no-op for it. But an LLM-resolved
+    line can return several honestly-scored, closely-ranked candidates
+    with no margin check at all between them — one strong-looking
+    candidate for a line that was deliberately built to be ambiguous
+    (several near-identical catalog variants) auto-approved anyway,
+    because nothing ever compared it to its own runner-up.
+    """
+    if len(candidates) <= 1:
+        return True
+    return (candidates[0].score - candidates[1].score) >= CONFIDENT_MARGIN
 
 
 @transaction.atomic
@@ -80,6 +132,7 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
     setup_config = _active_setup_configuration()
     catalog_items = list(CatalogItem.objects.filter(status="active"))
     discontinued_replacements = _discontinued_replacement_map()
+    replacement_skus = set(discontinued_replacements.values())
 
     order = OrderRecord.objects.create(
         id=_new_id("ord-live"),
@@ -120,12 +173,13 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
         )
 
         stated_identifier = _norm(line.get("customer_part_number")) or _norm(line.get("requested_sku"))
-        replacement_sku = discontinued_replacements.get(stated_identifier) if stated_identifier else None
+        stated_replacement_sku = discontinued_replacements.get(stated_identifier) if stated_identifier else None
+        confidently_ahead = _is_confidently_ahead(candidates)
 
         top_row = None
         top_is_discontinued_substitution = False
         for rank, candidate in enumerate(candidates, start=1):
-            is_substitution = bool(replacement_sku and candidate.catalog_item.sku == replacement_sku)
+            is_substitution = _is_substitution(candidate, stated_replacement_sku, replacement_skus)
             proof_items = candidate.proof_items
             if is_substitution:
                 proof_items = proof_items + [
@@ -147,14 +201,23 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
                 rank=rank,
                 proof_items=proof_items,
                 missing_evidence=candidate.missing_evidence,
-                requires_human_review=is_substitution or candidate.score < setup_config.auto_approve_threshold,
+                requires_human_review=(
+                    is_substitution
+                    or candidate.score < setup_config.auto_approve_threshold
+                    or not confidently_ahead
+                ),
             )
             if rank == 1:
                 top_row = row
                 top_is_discontinued_substitution = is_substitution
 
         description = line.get("description") or line_item.original_text
-        if top_row and top_row.score >= setup_config.auto_approve_threshold and not top_is_discontinued_substitution:
+        if (
+            top_row
+            and top_row.score >= setup_config.auto_approve_threshold
+            and not top_is_discontinued_substitution
+            and confidently_ahead
+        ):
             line_item.normalized_name = top_row.catalog_item.name
             line_item.selected_match_candidate = top_row
             line_item.status = "matched"
