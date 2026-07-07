@@ -43,6 +43,11 @@ export function MatchPickList({
           <input
             value={customValue}
             onChange={(event) => onCustomChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && customValue.trim().length > 0) {
+                onCustomSubmit();
+              }
+            }}
             placeholder="Type the correct match..."
             className="mt-1.5 w-full rounded-md border border-[var(--om-border)] bg-[var(--om-bg)] px-2 py-1.5 text-sm text-[var(--om-text)] outline-none placeholder:text-[var(--om-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
           />
