@@ -20,7 +20,7 @@ It does not include real customer data, Comena customer data, private purchase o
 | Match candidates | High-confidence, review-needed, blocked, and no-match |
 | Ground truth | Header fields, line extraction labels, expected SKUs, top-3 candidates, blocked cases, expected eval outcomes |
 | Evals | Complete simulated run plus stale run for future UX states |
-| Candidate proof | 4 selected proof points from `docs/story-bank-harsh.md` |
+| Candidate proof | 4 selected, Comena-relevant proof points |
 
 ## Required Edge-Case Coverage
 
@@ -78,13 +78,13 @@ It does not include real customer data, Comena customer data, private purchase o
 
 | Task | Status in dataset |
 |---|---|
-| T023 Catalog data | `frontend/data/catalog.ts` contains 46 catalog rows across all required families. |
-| T024 Orders/RFQs | `frontend/data/orders.ts` contains 4 synthetic POs/RFQs with customer profiles. |
-| T025 Evals | `frontend/data/evals.ts` contains extraction, matching, review, false-confident, exception, and time-saved metrics. |
-| T026 Candidate proof | `frontend/data/candidate.ts` contains selected proof points from `docs/story-bank-harsh.md`. |
-| T027 Messy cases | Covered in the required edge-case table above. |
-| T028 Traceability reasons | Covered in `matchCandidates[].proofItems` and traceability table above. |
-| T029 Ground truth labels | Covered in `groundTruth` fields and eval failure cases. |
-| T030 Edge-case matrix | This file. |
-| T031 Sample-data metadata | Data notices in all new data files mark the dataset as grounded synthetic/sample data. |
-| T032 P1 validation | Covered in the P1 user story validation table above. |
+| Catalog data | `frontend/data/catalog.ts` contains 46 catalog rows across all required families. |
+| Orders/RFQs | `frontend/data/orders.ts` contains 4 synthetic POs/RFQs with customer profiles. |
+| Evals | `frontend/data/evals.ts` contains extraction, matching, review, false-confident, exception, and time-saved metrics. |
+| Candidate proof | `frontend/data/candidate.ts` contains selected, Comena-relevant proof points. |
+| Messy cases | Covered in the required edge-case table above. |
+| Traceability reasons | Covered in `matchCandidates[].proofItems` and traceability table above. |
+| Ground truth labels | Covered in `groundTruth` fields and eval failure cases. |
+| Edge-case matrix | This file. |
+| Sample-data metadata | Data notices in all new data files mark the dataset as grounded synthetic/sample data. |
+| P1 validation | Covered in the P1 user story validation table above. |

@@ -105,7 +105,7 @@ A reviewer can follow the intended story step by step, but can also jump directl
 
 A reviewer can view a curated version of Harsh's relevant background, projects, and technical strengths, mapped to what Comena likely needs.
 
-**Why P2**: The prototype proves initiative, but the reviewer still needs to understand the candidate behind it. This should feel like evidence selection, not a full resume dump. Candidate content should be sourced from `docs/story-bank-harsh.md`, but it must stay secondary to the product and engineering thesis.
+**Why P2**: The prototype proves initiative, but the reviewer still needs to understand the candidate behind it. This should feel like evidence selection, not a full resume dump. Candidate content must stay secondary to the product and engineering thesis.
 
 **Independent Test**: A reviewer can see relevant work and connect each highlighted item to product engineering, AI/data systems, workflow thinking, deployment, reliability, or UX judgment.
 
@@ -152,7 +152,7 @@ A reviewer reaches the end and sees a clear, confident call to action to book a 
 - **FR-014**: The app MUST include an eval or quality section showing how extraction and matching quality would be measured.
 - **FR-015**: The eval section MUST include metrics that communicate production AI reliability, such as extraction accuracy, SKU top-1 accuracy, SKU top-3 recall, human correction rate, auto-approval rate, false confident matches, exception categories, or estimated time saved.
 - **FR-016**: The app MUST include selected candidate background and projects relevant to Comena.
-- **FR-017**: Candidate evidence MUST be curated from `docs/story-bank-harsh.md` and tied to Comena-relevant capabilities rather than presented as a generic CV.
+- **FR-017**: Candidate evidence MUST be curated and tied to Comena-relevant capabilities rather than presented as a generic CV.
 - **FR-018**: The app MUST include a final hiring-oriented CTA.
 - **FR-019**: The app MUST support both guided reading and direct navigation to key sections.
 - **FR-020**: The app MUST use realistic industrial order/catalog data, even if synthetic.
@@ -213,7 +213,7 @@ A reviewer reaches the end and sees a clear, confident call to action to book a 
 - The actual shareable demo data should remain synthetic so it is safe, controllable, and easy to shape around the intended product story.
 - Deep dataset sourcing, data generation, and eval dataset design belong primarily to the later backend/functionality phase, not the first frontend/story pass.
 - Harsh will provide or approve the relevant CV/project items before they are included.
-- Candidate content will be selected from `docs/story-bank-harsh.md`, but only the Comena-relevant pieces should appear in the app.
+- Candidate content will be selected by Harsh, and only the Comena-relevant pieces should appear in the app.
 - The first version should be honest about mocked/simulated behavior while still feeling polished and useful.
 - The app should not present itself as a competitor to Comena; it should present itself as evidence of candidate fit.
 - The core prototype should use more general product language than the opening and ending sections so the project can later be adapted for adjacent companies.

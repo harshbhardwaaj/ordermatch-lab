@@ -1,7 +1,6 @@
 # Implementation Plan: OrderMatch Lab
 
 **Spec**: `docs/spec-kit/specification.md`
-**Constitution**: `docs/spec-kit/constitution.md`
 **Clarifications**: `docs/spec-kit/clarifications.md`
 **Date**: July 2, 2026 (Backend Architecture section revised July 6, 2026, see `docs/spec-kit/clarifications.md` §7)
 
@@ -134,8 +133,8 @@ The app should be a guided but non-linear web experience:
    - Traceability and graceful degradation.
 
 5. **Relevant Candidate Evidence**
-   - Curated proof from `docs/story-bank-harsh.md`.
-   - Emphasize ALEVOR AI classification, AI Investment Analyst, CV-JD Fit Scorer, selected TUM coursework, and optional Bomberman.
+   - Curated proof, selected for relevance to Comena.
+   - Emphasize ALEVOR AI classification, AI Investment Analyst, CV-JD Fit Scorer, and selected TUM coursework.
    - Keep this section secondary to the product.
 
 6. **Final CTA**
@@ -203,13 +202,13 @@ Core backend responsibilities for v1.0, mapped directly onto what `/thesis` alre
 - Store orders, extracted fields, line items, catalog entries, match candidates, setup configuration, review decisions, and eval runs.
 - **Extraction**: call the OpenAI API to turn pasted/uploaded order text into structured line items, replacing the client-side timer simulation with real structured output.
 - **Matching**: implement the hybrid approach already described on the `/thesis` confidence slide: deterministic attribute/unit/part-number normalization rules first, then OpenAI-assisted semantic matching against the catalog for remaining ambiguity.
-- **Confidence**: compute a real per-line score from the matching pipeline. Compare it against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal; the frontend continues to express outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. Do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code in Phase 6, T055).
+- **Confidence**: compute a real per-line score from the matching pipeline. Compare it against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal; the frontend continues to express outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. Do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code in Phase 6).
 - **Setup configuration**: persist auto-approve threshold, price-flag threshold, and rule toggles in Postgres, and read them at match time so they actually gate live order routing, replacing `/prototype/setup`'s disconnected simulated click-through.
 - **Evals**: compute real metrics by running the pipeline against the existing grounded, labeled sample dataset in `docs/data-research/`, rather than the hardcoded figures in `frontend/data/evals.ts`.
 - Persist human review decisions such as accepted match, rejected match, corrected SKU, resolved exception, and ERP-ready status.
-- Expose eval metrics through API endpoints so real numbers exist even if the frontend keeps them out of a numeric dashboard, consistent with the Phase 6 decision not to build one (T052).
+- Expose eval metrics through API endpoints so real numbers exist even if the frontend keeps them out of a numeric dashboard, consistent with the Phase 6 decision not to build one.
 - Keep secrets, LLM API keys, and provider calls out of browser code.
-- Define real error/recovery behavior for LLM provider timeout, rate limiting, malformed responses, and Render service/database unavailability. This is now a real requirement, not a hypothetical one: Phase 13's original T058 deferred graceful degradation specifically because "there is no backend yet for these failures to be real." That reasoning no longer holds once extraction/matching call a real external API.
+- Define real error/recovery behavior for LLM provider timeout, rate limiting, malformed responses, and Render service/database unavailability. This is now a real requirement, not a hypothetical one: Phase 13's original plan deferred graceful degradation specifically because "there is no backend yet for these failures to be real." That reasoning no longer holds once extraction/matching call a real external API.
 
 Possible backend layout after v0.6:
 
@@ -316,9 +315,9 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 - [BLOCKING BEFORE v1.0] Decide whether Django REST Framework, Django Ninja, or another Django API pattern fits best.
 - [BLOCKING BEFORE v1.0] Decide how to run background jobs for parsing, matching, and evals if they exceed normal request time.
 - [RESOLVED July 6, 2026] Backend hosting and database provider: Render (web service + managed Postgres). The original default was Railway (matches the AI Investment Analyst deploy), but that account's trial credit is nearly exhausted and its Limited Trial gates outbound network access behind GitHub re-verification or a payment method. Render needs no card for its free Postgres + web service tier. See `docs/spec-kit/clarifications.md` §7.
-- [RESOLVED July 6, 2026, SUPERSEDED July 6, 2026] LLM provider for extraction and matching-assist: originally Claude API (Anthropic) per `docs/spec-kit/clarifications.md` §7, switched to OpenAI API (`gpt-5.4-mini`) to use existing hackathon credit; called only from backend endpoints either way. See `docs/spec-kit/clarifications.md` §8.
+- [RESOLVED July 6, 2026, SUPERSEDED July 6, 2026] LLM provider for extraction and matching-assist: originally Claude API (Anthropic) per `docs/spec-kit/clarifications.md` §7, switched to OpenAI API (`gpt-5.4-mini`) for cost-efficient iteration during development; called only from backend endpoints either way. See `docs/spec-kit/clarifications.md` §8.
 - [BLOCKING BEFORE v1.0] Decide how uploaded files are stored or whether v1.0 uses pasted/sample content only.
-- [OPEN, DEFERRED TO PHASE 13] Decide whether real eval numbers get any new frontend display, or stay backend-only/documented, consistent with the Phase 6 decision not to build a numeric eval dashboard (T052).
+- [OPEN, DEFERRED TO PHASE 13] Decide whether real eval numbers get any new frontend display, or stay backend-only/documented, consistent with the Phase 6 decision not to build a numeric eval dashboard.
 - [HARSH INPUT BEFORE FINAL CTA] Provide or choose calendar booking tool/link.
 - [HARSH INPUT BEFORE CANDIDATE SECTION FINAL COPY] Provide final preferred GitHub, LinkedIn, resume, project links, and any social links worth including.
 
@@ -336,10 +335,10 @@ Use the installed UI/UX skills or design-system tooling to assist, but the const
 | Use grounded synthetic data | Real B2B PO/SKU data is hard to access and private data is unsafe. Grounding reduces fake-data bias while keeping examples controllable. | Pure synthetic data could be too clean; pure public procurement data may not map to SKU matching. |
 | Keep Comena in opening/end and reusable product language in core prototype | Makes the first version feel built for Comena while preserving later adaptability. | Naming Comena everywhere could make repurposing harder; staying generic everywhere would weaken the pitch. |
 | Candidate proof stays secondary | The product should sell Harsh through evidence. Candidate content should support, not dominate, the experience. | A full resume-style section would dilute the product and feel less tailored. |
-| Host the real backend on Render, not Railway | Render's free Postgres + web service tier needs no card and has no equivalent network-restriction gate. The Railway account already used for the AI Investment Analyst deploy is down to its last trial credit and would put both projects' uptime at risk. | Railway was the original default per this plan's earlier stack alignment, but its trial state (GitHub-verification-gated network access, $3.61 of $5 credit left, 0 trial days remaining) made it impractical without either verifying an account of uncertain standing or adding billing. |
-| Use the OpenAI API for real extraction and matching-assist (originally planned as Claude API, see §8) | Real structured output from messy order text is exactly the extraction problem the engineering thesis already describes; computing this server-side keeps keys out of the browser and makes confidence a real model signal instead of a hardcoded timer. OpenAI over Claude specifically because Harsh has $35 of unused hackathon credit there, and the thesis narrative only ever says "a language model," never naming a provider, so nothing user-facing needed to change. | Building a custom extraction/parsing model from scratch would be far more work for no accuracy benefit at this catalog scale, and would abandon the hybrid matching approach already narrated on the `/thesis` confidence slide. Staying on Claude would have meant paying for a second provider's API from scratch with no offsetting credit. |
-| Compute confidence as a real backend score, but expose only the existing two-signal frontend model | Preserves the review UI already built and tested in Phase 5/6 while making the underlying score genuinely real and threshold-driven. Avoids reintroducing the 4-band badge UI already deleted as dead code (T055). | A visible numeric or 4-band confidence UI was considered and rejected: it would be new frontend surface area with no clear reviewer benefit over the existing resolve-or-defer picker, and would contradict the earlier decision that killed `lib/confidence.ts`. |
-| Persist setup-config thresholds in Postgres and use them to gate real routing | Turns `/prototype/setup` from a disconnected simulated click-through into something that actually drives the live order review, closing the gap noted when the eval dashboard was killed in Phase 6 (T052). | Keeping setup as a pure demo would leave two disconnected simulations instead of one coherent, backend-real product. |
+| Host the real backend on Render, not Railway | Render's free Postgres + web service tier needs no card and has no equivalent network-restriction gate. The Railway account already used for the AI Investment Analyst deploy is down to its last trial credit and would put both projects' uptime at risk. | Railway was the original default per this plan's earlier stack alignment, but its trial state (GitHub-verification-gated network access, minimal credit remaining) made it impractical without either verifying an account of uncertain standing or adding billing. |
+| Use the OpenAI API for real extraction and matching-assist (originally planned as Claude API, see §8) | Real structured output from messy order text is exactly the extraction problem the engineering thesis already describes; computing this server-side keeps keys out of the browser and makes confidence a real model signal instead of a hardcoded timer. OpenAI was chosen for cost-efficient iteration during development, and the thesis narrative only ever says "a language model," never naming a provider, so nothing user-facing needed to change. | Building a custom extraction/parsing model from scratch would be far more work for no accuracy benefit at this catalog scale, and would abandon the hybrid matching approach already narrated on the `/thesis` confidence slide. |
+| Compute confidence as a real backend score, but expose only the existing two-signal frontend model | Preserves the review UI already built and tested in Phase 5/6 while making the underlying score genuinely real and threshold-driven. Avoids reintroducing the 4-band badge UI already deleted as dead code. | A visible numeric or 4-band confidence UI was considered and rejected: it would be new frontend surface area with no clear reviewer benefit over the existing resolve-or-defer picker, and would contradict the earlier decision that killed `lib/confidence.ts`. |
+| Persist setup-config thresholds in Postgres and use them to gate real routing | Turns `/prototype/setup` from a disconnected simulated click-through into something that actually drives the live order review, closing the gap noted when the eval dashboard was killed in Phase 6. | Keeping setup as a pure demo would leave two disconnected simulations instead of one coherent, backend-real product. |
 
 ## Version Strategy
 

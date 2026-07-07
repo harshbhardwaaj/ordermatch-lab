@@ -1,15 +1,9 @@
 # OrderMatch Lab — Backend
 
-Django + Django REST Framework + Postgres, hosted on Render. See
-`docs/spec-kit/plan.md` (Backend Architecture) and
-`docs/spec-kit/clarifications.md` §7 for why this exists and how it's
-scoped.
-
-Real order extraction and matching (OpenAI API), backend-computed
-confidence, real eval computation, and setup-config-driven routing are
-Phase 12/13 work (`docs/spec-kit/tasks.md`). This scaffold (Phase 11)
-gives read-only API endpoints over the same grounded sample data already
-used by the frontend.
+Django + Django REST Framework + Postgres. Deployed on Render at
+`ordermatch-backend.onrender.com`. Handles real order extraction, hybrid
+SKU matching, confidence-gated routing, and eval generation, all via the
+OpenAI API, called only from backend endpoints, never from the browser.
 
 ## Local development
 
@@ -29,8 +23,9 @@ sudo -u postgres psql -c "CREATE ROLE ordermatch LOGIN PASSWORD 'ordermatch_dev_
 sudo -u postgres psql -c "CREATE DATABASE ordermatch_dev OWNER ordermatch;"
 ```
 
-Copy `.env.example` to `.env` and adjust if your local Postgres setup
-differs from the default (`postgres://ordermatch:ordermatch_dev_pw@localhost:5432/ordermatch_dev`).
+Copy `.env.example` to `.env`, add a real `OPENAI_API_KEY`, and adjust
+`DATABASE_URL` if your local Postgres setup differs from the default
+(`postgres://ordermatch:ordermatch_dev_pw@localhost:5432/ordermatch_dev`).
 
 Run migrations and load the grounded sample data:
 
@@ -45,27 +40,44 @@ Start the server:
 python manage.py runserver
 ```
 
+Run the test suite:
+
+```bash
+python manage.py test
+```
+
 ## API endpoints
 
 All under `/api/`:
 
 - `GET /api/orders/` — order list (light shape)
 - `GET /api/orders/<id>/` — order detail, with nested line items, exceptions, readiness checks, and match candidates
+- `POST /api/orders/extract/` — real extraction + hybrid matching from pasted order text
+- `POST /api/orders/<id>/send-to-erp/`
+- `POST /api/orders/reset-demo/` — resets the shared demo database back to the 4 sample orders
 - `GET /api/catalog-items/`, `GET /api/catalog-items/<id>/`
-- `GET /api/setup-configuration/`, `GET /api/setup-configuration/<id>/` — the single real setup configuration row (auto-approve threshold, price-flag threshold, rule toggles), not a per-customer onboarding wizard
+- `GET /api/setup-configuration/`, `PATCH /api/setup-configuration/<id>/` — auto-approve threshold, price-flag threshold, rule toggles
 - `GET /api/eval-runs/`, `GET /api/eval-runs/<id>/`
-
-All read-only for now. Write endpoints (accept/reject a match, resolve an
-exception, update setup config) are Phase 12 work.
+- `POST /api/line-items/<id>/decide/`, `/defer/`, `/reopen/`
+- `POST /api/exceptions/<id>/resolve/`
 
 Match candidates deliberately omit `confidence_band` and `score` from
-this API response — those stay backend-internal per
-`docs/spec-kit/clarifications.md` §7. Don't add them to
+API responses — those stay backend-internal. Don't add them to
 `matching/serializers.py`'s `MatchCandidateSerializer` without checking
 that decision first.
 
 Django admin is at `/admin/` — create a superuser with
 `python manage.py createsuperuser` to browse seeded data directly.
+
+## Running a real eval
+
+```bash
+python manage.py run_eval
+```
+
+Runs the actual extraction and matching pipeline against the 4 labeled
+sample orders and scores the result. Makes real OpenAI API calls and
+spends real credit, not something to run casually.
 
 ## Regenerating seed data
 
@@ -79,6 +91,5 @@ python manage.py seed_sample_data
 
 ## Environment variables
 
-See `.env.example`. `OPENAI_API_KEY` is read by backend code only
-(Phase 13 extraction/matching) — never expose it to frontend code or the
-browser.
+See `.env.example`. `OPENAI_API_KEY` is read by backend code only,
+never exposed to frontend code or the browser.

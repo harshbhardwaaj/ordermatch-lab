@@ -90,7 +90,7 @@ def _load_sample_orders() -> list[dict]:
 
 # Below this length, a value is only checked against the structured
 # attribute list, never the free-text description: an adversarial review
-# (see tasks.md) found that a short digit/code (e.g. a "4" pin-count) can
+# found that a short digit/code (e.g. a "4" pin-count) can
 # spuriously substring-match an unrelated number embedded in prose (a
 # price, a different measurement), which the structured attribute list
 # -- a curated, per-fact breakdown rather than free text -- is much less

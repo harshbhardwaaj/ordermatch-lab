@@ -3,7 +3,7 @@
 **Date**: July 2, 2026  
 **Reviewer type**: AI self-review  
 **Scope**: Phase 4 dark entry screen and guided route shell  
-**Status**: Closed for Phase 4 bookkeeping. AI self-review is recorded here, and Harsh confirmed T039 should be marked complete before Phase 5 begins.
+**Status**: Closed for Phase 4 bookkeeping. AI self-review is recorded here, and Harsh confirmed this pass was complete before Phase 5 began.
 
 ## Test Method
 

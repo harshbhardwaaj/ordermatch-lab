@@ -58,7 +58,6 @@ Candidate content should favor:
 - AI Investment Analyst full-stack deployment
 - CV-JD Fit Scorer document and structured-output workflow
 - relevant TUM coursework without grades
-- optional Java project only if it helps coding proof
 
 ## No-Overclaim Rules
 
@@ -104,9 +103,9 @@ Avoid:
 - "Transformative."
 - "End-to-end" unless describing a specific built flow.
 
-## Banned Words And Phrases From Story Bank
+## Banned Words And Phrases
 
-Scope note: `docs/story-bank-harsh.md` is source material for Harsh's background, candidate proof, and outward-facing writing. Its strict writing rules apply to app copy, CTA copy, candidate proof, README/send copy, and other reviewer-facing text. They are guidance, not a hard lint rule, for internal planning, research, and design notes.
+Scope note: these rules apply to app copy, CTA copy, candidate proof, README/send copy, and other reviewer-facing text. They are guidance, not a hard lint rule, for internal planning, research, and design notes.
 
 Do not use these in product/candidate copy unless discussing the banned list itself:
 

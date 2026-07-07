@@ -7,7 +7,7 @@ This file records Step 3 decisions from the Spec Kit flow. It exists so future p
 
 ## 1. Candidate Content
 
-Candidate content should be selected from `docs/story-bank-harsh.md`.
+Candidate content should be selected from Harsh's background material.
 
 The candidate section should not become a full biography or generic CV page. It should sell Harsh through proof that is relevant to Comena's likely needs:
 
@@ -110,24 +110,24 @@ Avoid cringe, inflated claims, or fake certainty. Let the product and engineerin
 
 This entry records the decision that moved backend work from an abstract "v0.6+" placeholder into a real target, reusing what `/thesis` already narrates rather than inventing a new approach. It supersedes the open backend-hosting and LLM-provider items in `docs/spec-kit/plan.md`'s Research Needed list.
 
-**Hosting**: Render, not Railway. Railway was the original default because it's what the AI Investment Analyst project used, but that account's trial credit is nearly exhausted ($3.61 of $5 left, 0 trial days remaining) and Railway's Limited Trial gates outbound network access behind GitHub re-verification (`railway.com/verify`) or a payment method. Render's free Postgres + web service tier needs no card, and using it isolates this project's risk from the AI Investment Analyst deployment's uptime.
+**Hosting**: Render, not Railway. Railway was the original default because it's what the AI Investment Analyst project used, but that account's trial credit is nearly exhausted and Railway's Limited Trial gates outbound network access behind GitHub re-verification (`railway.com/verify`) or a payment method. Render's free Postgres + web service tier needs no card, and using it isolates this project's risk from the AI Investment Analyst deployment's uptime.
 
 **Extraction and matching**: Real, via the Claude API called only from backend endpoints, never from the browser. Extraction replaces the client-side timer simulation with real structured output from pasted/uploaded order text. Matching implements the hybrid approach already described on the `/thesis` confidence slide: deterministic attribute/unit/part-number rules first, Claude-assisted semantic matching against the catalog for remaining ambiguity. Neither is a new invented method; both are what the engineering thesis already claims the product does.
 
-**Confidence**: Computed server-side as a real per-line score from the matching pipeline. The score is compared against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal. Explicit decision: do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code in Phase 6, T055, once it was found unused). The frontend keeps expressing outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. This is real backend work with no new frontend surface.
+**Confidence**: Computed server-side as a real per-line score from the matching pipeline. The score is compared against persisted setup-config thresholds (auto-approve threshold, price-flag threshold) to decide routing. The raw score and any multi-band classification stay backend-internal. Explicit decision: do not reintroduce a 4-band confidence badge UI (`lib/confidence.ts` was already deleted as dead code once it was found unused). The frontend keeps expressing outcomes only through the existing two-signal model (clean match / risk flag) already used by the resolve-or-defer picker. This is real backend work with no new frontend surface.
 
 **Setup configuration**: Auto-approve threshold, price-flag threshold, and rule toggles persist in Postgres and are read at match time to gate real routing, replacing `/prototype/setup`'s disconnected simulated click-through with something that actually drives the live order review.
 
-**Evals**: Computed for real by running the pipeline against the existing grounded, labeled sample dataset in `docs/data-research/`, closing the gap noted when the eval dashboard was killed in Phase 6 (T052: "`data/evals.ts` is kept, unused for now, for when a real backend can compute these metrics for real"). Whether real eval numbers get any new frontend display, or stay backend-only/documented, remains an open decision, deferred to Phase 13 (T126).
+**Evals**: Computed for real by running the pipeline against the existing grounded, labeled sample dataset in `docs/data-research/`, closing the gap noted when the eval dashboard was killed earlier ("`data/evals.ts` is kept, unused for now, for when a real backend can compute these metrics for real"). Whether real eval numbers get any new frontend display, or stay backend-only/documented, remains an open decision.
 
-**Graceful degradation**: Now a real requirement, not a hypothetical one. Phase 13's original T058 was deferred specifically because "there is no backend yet for these failures to be real." Once extraction/matching genuinely call the LLM API, real failure modes exist (timeout, rate limit, malformed response, Render service/database unavailability) and need real recovery states, covered under the rebuilt Phase 12 (T112) and Phase 13 (T124).
+**Graceful degradation**: Now a real requirement, not a hypothetical one. The original plan deferred this specifically because "there is no backend yet for these failures to be real." Once extraction/matching genuinely call the LLM API, real failure modes exist (timeout, rate limit, malformed response, Render service/database unavailability) and need real recovery states.
 
 ## 8. LLM Provider Switch: OpenAI Instead Of Claude (Added July 6, 2026)
 
 This entry supersedes §7's provider choice only. Everything else in §7 (Render hosting, hybrid matching approach, backend-internal confidence, real evals, graceful degradation) stands unchanged.
 
-**Decision**: Extraction and matching-assist now call the OpenAI API, not the Claude API. Harsh has $35 of unused OpenAI credit from a hackathon, and the `/thesis` narrative never names a provider (it says "a language model" throughout `how-it-works.tsx`), so no user-facing copy needed to change, only backend code and internal docs.
+**Decision**: Extraction and matching-assist now call the OpenAI API, not the Claude API, chosen for predictable, low-cost iteration during development using existing OpenAI credit. The `/thesis` narrative never names a provider (it says "a language model" throughout `how-it-works.tsx`), so no user-facing copy needed to change, only backend code and internal docs.
 
-**Model**: `gpt-5.4-mini` ($0.75/1M input, $4.50/1M output as of this writing), chosen over `gpt-5.4-nano` for the extra reasoning headroom on extraction and semantic matching, and over full `gpt-5.4` because mini already supports Structured Outputs (strict JSON schema mode) and $35 covers thousands of test runs against the sample dataset at mini's rate. `gpt-5.4` remains the fallback if matching quality on ambiguous cases needs it.
+**Model**: `gpt-5.4-mini` ($0.75/1M input, $4.50/1M output as of this writing), chosen over `gpt-5.4-nano` for the extra reasoning headroom on extraction and semantic matching, and over full `gpt-5.4` because mini already supports Structured Outputs (strict JSON schema mode) at a rate that comfortably covers extensive test runs against the sample dataset. `gpt-5.4` remains the fallback if matching quality on ambiguous cases needs it.
 
 **What changed**: `backend/ordermatch/settings.py`'s `ANTHROPIC_API_KEY` became `OPENAI_API_KEY`; `backend/.env.example` updated to match; `openai` added to `backend/requirements.txt`. `backend/.env` (gitignored, holds the real key) is not committed and needs to be created locally with the real key before Phase 13 extraction/matching work can be tested.

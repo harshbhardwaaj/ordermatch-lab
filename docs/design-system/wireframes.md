@@ -45,6 +45,8 @@ Rules:
 
 ## What I Learned
 
+Superseded: this standalone section was removed. See `docs/design-system/screen-map.md` for the current opening flow.
+
 ```text
 +----------------------------------------------------------------------+
 | What I learned                                                       |
@@ -79,7 +81,7 @@ Rules:
 
 - Sample orders use real synthetic data, not placeholder rows.
 - An already-sent sample order shows a sent badge and switches its action to a secondary "view sent order" link.
-- The own-order panel's "connect email" tab is intentionally inert, styled the same as the working tabs, with no disclaimer.
+- Superseded: the own-order panel's "connect email" tab now shows a one-line disclaimer that it is a preview and not a live inbox, rather than staying silently inert.
 - Own-order matching runs against the same sample catalog; the panel says so in one line, no gate.
 
 ## Processing
