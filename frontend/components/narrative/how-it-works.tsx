@@ -651,7 +651,7 @@ export function HowItWorks() {
     <AppShell>
       <main
         id="main"
-        className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 py-8 text-[var(--om-text)] sm:px-8"
+        className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-5 py-8 text-[var(--om-text)] sm:px-8"
       >
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1000px_460px_at_60%_12%,rgba(var(--om-accent-rgb),0.10),transparent_62%),var(--om-bg)]" />
 

@@ -26,7 +26,7 @@ export default function ContactPage() {
     <AppShell>
       <main
         id="main"
-        className="relative mx-auto flex min-h-screen w-full max-w-4xl flex-col px-5 py-10 text-[var(--om-text)] sm:px-8"
+        className="relative mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-5 py-10 text-[var(--om-text)] sm:px-8"
       >
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_440px_at_58%_18%,rgba(var(--om-accent-rgb),0.12),transparent_62%),var(--om-bg)]" />
 

@@ -83,7 +83,7 @@ export function OrderLog() {
     <AppShell>
       <main
         id="main"
-        className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
       >
         <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6">
           <div className="max-w-2xl">

@@ -488,7 +488,7 @@ export function SetupFlow() {
       <AppShell>
         <main
           id="main"
-          className="mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
+          className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
         >
           <div className="h-8 w-64 animate-pulse rounded bg-[var(--om-surface-2)]" />
           <p className="mt-3 flex items-center gap-2 text-sm font-medium text-[var(--om-accent)]">
@@ -507,7 +507,7 @@ export function SetupFlow() {
       <AppShell>
         <main
           id="main"
-          className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
+          className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
         >
           <div className="flex flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">
             <p>Could not load setup configuration. The backend may be offline.</p>
@@ -530,7 +530,7 @@ export function SetupFlow() {
       <AppShell>
         <main
           id="main"
-          className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-5 py-10 text-center text-[var(--om-text)] sm:px-8"
+          className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center px-5 py-10 text-center text-[var(--om-text)] sm:px-8"
         >
           <span className="flex size-16 items-center justify-center rounded-full border-2 border-[rgba(var(--om-success-rgb),0.45)] bg-[rgba(var(--om-success-rgb),0.08)] [animation:success-pop_500ms_cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none">
             <Check className="size-8 text-[var(--om-success)]" />
@@ -556,7 +556,7 @@ export function SetupFlow() {
     <AppShell>
       <main
         id="main"
-        className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 py-8 text-[var(--om-text)] sm:px-8"
+        className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-5 py-8 text-[var(--om-text)] sm:px-8"
       >
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1000px_460px_at_60%_12%,rgba(var(--om-accent-rgb),0.10),transparent_62%),var(--om-bg)]" />
 

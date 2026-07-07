@@ -11,7 +11,7 @@ export function PrototypeOrientation() {
     <AppShell>
       <main
         id="main"
-        className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col items-center justify-center px-4 py-12 text-[var(--om-text)] sm:px-6 lg:px-8"
+        className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col items-center justify-center px-4 py-12 text-[var(--om-text)] sm:px-6 lg:px-8"
       >
         <section className="mx-auto flex w-full max-w-4xl flex-col items-start gap-7 text-left">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[var(--om-accent)] sm:text-sm">

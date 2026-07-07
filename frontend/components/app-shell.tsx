@@ -127,7 +127,7 @@ export function AppShell({
     <div
       data-nav-open={isNavOpen ? "true" : "false"}
       className={cn(
-        "min-h-screen bg-[var(--om-bg)] text-[var(--om-text)]",
+        "min-h-dvh bg-[var(--om-bg)] text-[var(--om-text)]",
         showNavigation ? "app-shell-with-nav" : undefined,
         className,
       )}
@@ -304,7 +304,10 @@ export function AppShell({
         <header className="sticky top-0 z-40 border-b border-[var(--om-border)] bg-[var(--om-surface)]/95 px-4 py-3 text-[var(--om-text)] backdrop-blur md:hidden">
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl text-sm font-semibold marker:hidden">
-              <span>OrderMatch Lab</span>
+              <span className="flex items-center gap-2">
+                <BrandMark className="size-6 shrink-0" />
+                OrderMatch Lab
+              </span>
               <span className="flex items-center gap-2">
                 <ThemeToggle className="size-9" />
                 <span className="rounded-full border border-[var(--om-border)] px-3 py-1 text-xs text-[var(--om-muted)]">

@@ -180,7 +180,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
       <AppShell>
         <main
           id="main"
-          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+          className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
         >
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5">
             <div className="h-6 w-40 animate-pulse rounded bg-[var(--om-surface-2)]" />
@@ -197,7 +197,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
       <AppShell>
         <main
           id="main"
-          className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+          className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
         >
           <div className="mx-auto flex w-full max-w-2xl flex-col items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-800">
             <p>{state.message}</p>
@@ -229,7 +229,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
     <AppShell>
       <main
         id="main"
-        className="mx-auto flex min-h-screen w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
+        className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
       >
         <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6">
           <button

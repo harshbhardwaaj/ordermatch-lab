@@ -6,14 +6,14 @@ export function OpeningSection() {
   const ArrowRight = icons.action;
 
   return (
-    <section className="hero-motion relative min-h-screen overflow-hidden bg-[var(--om-bg)] text-[var(--om-text)]">
+    <section className="hero-motion relative min-h-dvh overflow-hidden bg-[var(--om-bg)] text-[var(--om-text)]">
       <div className="absolute inset-0 bg-[radial-gradient(1100px_560px_at_50%_42%,var(--om-bg-soft)_0%,var(--om-bg)_64%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(var(--om-accent-rgb),0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--om-accent-rgb),0.055)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(820px_480px_at_50%_44%,#000_0%,transparent_78%)]" />
       <div className="absolute right-5 top-5 z-20 sm:right-8 sm:top-8">
         <ThemeToggle />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-screen-xl items-center justify-center px-5 py-12 text-center sm:px-8 lg:px-12">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-screen-xl items-center justify-center px-5 py-12 text-center sm:px-8 lg:px-12">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center text-center">
           <p className="mb-8 inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--om-muted)] sm:text-xs">
             <span className="size-1.5 rounded-full bg-[var(--om-accent)]" />
