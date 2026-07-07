@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, FileUp, Mail, PenLine } from "lucide-react";
+import { Check, FileUp, Loader2, Mail, PenLine } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/ord
 import { formatOrderSource } from "@/lib/formatters";
 import { getOrderLogHref, getOrderProcessingHref, getOrderSummaryHref } from "@/lib/product-workflow";
 import { cn } from "@/lib/utils";
+import { useSlowLoad } from "@/lib/use-slow-load";
 
 const FORWARDING_ADDRESS = "orders@ordermatch-demo.ai";
 
@@ -188,6 +189,10 @@ function OwnOrderPanel({
               {copied ? "Copied" : "Copy address"}
             </Button>
           </div>
+          <p className="mt-2 text-xs text-[var(--om-muted)]">
+            Email intake is a preview only for now, this inbox is not live. Paste the order text
+            above for a real read.
+          </p>
         </TabsContent>
       </Tabs>
 
@@ -209,6 +214,7 @@ export function OrderIntake() {
   const [showOwnOrder, setShowOwnOrder] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [retryKey, setRetryKey] = useState(0);
+  const isSlow = useSlowLoad(state.status === "loading");
   const [isSubmittingOwnOrder, setIsSubmittingOwnOrder] = useState(false);
   const [ownOrderSubmitError, setOwnOrderSubmitError] = useState<string | null>(null);
 
@@ -277,6 +283,14 @@ export function OrderIntake() {
                 ? `You've sent ${sentCount} of ${sampleOrders.length} sample orders so far. Pick another below, or bring your own.`
                 : "Choose one of the sample orders below, or bring your own."}
             </p>
+            {state.status === "loading" ? (
+              <p className="mt-3 flex items-center gap-2 text-sm font-medium text-[var(--om-accent)]">
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                {isSlow
+                  ? "Taking longer than usual. The backend sleeps when idle and can take up to a minute to wake up."
+                  : "Loading orders..."}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4">

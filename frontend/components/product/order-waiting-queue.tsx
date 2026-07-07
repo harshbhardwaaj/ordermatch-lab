@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { primaryWalkthroughOrderId, type SyntheticOrderRecord } from "@/data/ord
 import { formatOrderSource } from "@/lib/formatters";
 import { ApiError, fetchOrders } from "@/lib/api";
 import { getOrderSummaryHref, getOtherOrders } from "@/lib/product-workflow";
+import { useSlowLoad } from "@/lib/use-slow-load";
 
 function WaitingOrderCard({ order }: { order: SyntheticOrderRecord }) {
   return (
@@ -42,6 +43,7 @@ type LoadState =
 export function OrderWaitingQueue() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [retryKey, setRetryKey] = useState(0);
+  const isSlow = useSlowLoad(state.status === "loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +87,14 @@ export function OrderWaitingQueue() {
               These finished processing on their own. They just need a quick decision from you before
               they can go to the ERP.
             </p>
+            {state.status === "loading" ? (
+              <p className="mt-3 flex items-center gap-2 text-sm font-medium text-[var(--om-accent)]">
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                {isSlow
+                  ? "Taking longer than usual. The backend sleeps when idle and can take up to a minute to wake up."
+                  : "Loading orders..."}
+              </p>
+            ) : null}
           </div>
 
           {state.status === "loading" ? (

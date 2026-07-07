@@ -8,6 +8,7 @@ import {
   Check,
   Database,
   FileSpreadsheet,
+  Loader2,
   Server,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ import {
   type SetupConfiguration,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useSlowLoad } from "@/lib/use-slow-load";
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -407,6 +409,7 @@ export function SetupFlow() {
   const [retryKey, setRetryKey] = useState(0);
   const hasLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSlow = useSlowLoad(configLoadState === "loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -488,6 +491,12 @@ export function SetupFlow() {
           className="mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-5 py-10 text-[var(--om-text)] sm:px-8"
         >
           <div className="h-8 w-64 animate-pulse rounded bg-[var(--om-surface-2)]" />
+          <p className="mt-3 flex items-center gap-2 text-sm font-medium text-[var(--om-accent)]">
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            {isSlow
+              ? "Taking longer than usual. The backend sleeps when idle and can take up to a minute to wake up."
+              : "Loading setup..."}
+          </p>
         </main>
       </AppShell>
     );

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
+import { BackendWarmup } from "@/components/backend-warmup";
+
 const shellStateScript = `
   try {
     const storedTheme = localStorage.getItem("ordermatch-theme");
@@ -40,7 +42,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: shellStateScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <BackendWarmup />
+        {children}
+      </body>
     </html>
   );
 }

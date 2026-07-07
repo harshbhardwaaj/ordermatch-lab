@@ -81,7 +81,7 @@ export function TransitionLink({
 
     event.preventDefault();
 
-    doc.startViewTransition(() => {
+    const transition = doc.startViewTransition(() => {
       startTransition(() => {
         if (replace) {
           router.replace(hrefString, { scroll });
@@ -90,6 +90,12 @@ export function TransitionLink({
         }
       });
     });
+
+    // The browser aborts an in-flight transition if another navigation
+    // starts before it finishes (e.g. fast repeated clicks). That's
+    // expected and harmless, but leaves an unhandled rejection on
+    // `finished` if nothing catches it.
+    transition.finished.catch(() => {});
   };
 
   return (
