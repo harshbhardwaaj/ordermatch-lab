@@ -60,6 +60,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "common.middleware.DemoSessionMiddleware",
 ]
 
 ROOT_URLCONF = "ordermatch.urls"
@@ -151,6 +152,12 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+
+# Required for the per-visitor demo-session cookie (common.middleware.
+# DemoSessionMiddleware) to survive a cross-site fetch from the frontend's
+# origin — without this, the browser silently drops the cookie and every
+# visitor would fall back to sharing one session.
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [

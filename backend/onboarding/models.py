@@ -1,5 +1,13 @@
 from django.db import models
 
+DEFAULT_SETUP_CONFIGURATION = {
+    "auto_approve_threshold": 85,
+    "price_flag_threshold": 15,
+    "stop_discontinued_items": True,
+    "review_noncatalog_items": True,
+    "flag_duplicate_lines": True,
+}
+
 
 class SetupConfiguration(models.Model):
     """Real, persisted routing configuration (FR-043 / T110), replacing
@@ -10,13 +18,14 @@ class SetupConfiguration(models.Model):
     T119) to gate real order routing so /prototype/setup stops being
     disconnected from the live workflow. See clarifications.md §7.
 
-    There is one setup configuration for this whole demo, not a
-    per-customer onboarding wizard, since there is only one sample
-    catalog and no multi-tenant customer onboarding in this product.
-    Callers should read/create the single active row rather than
-    filtering by customer.
+    One row per demo session (see common.middleware.DemoSessionMiddleware),
+    not a per-customer onboarding wizard and not a single global row: each
+    visitor gets their own isolated thresholds, created on first touch
+    with DEFAULT_SETUP_CONFIGURATION, same as their own copy of the
+    sample orders (see orders.services.ensure_session_samples).
     """
 
+    demo_session_id = models.CharField(max_length=40, blank=True, default="", db_index=True)
     auto_approve_threshold = models.FloatField(default=85)
     price_flag_threshold = models.FloatField(default=15)
     stop_discontinued_items = models.BooleanField(default=True)

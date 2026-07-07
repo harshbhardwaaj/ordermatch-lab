@@ -54,7 +54,7 @@ All under `/api/`:
 - `GET /api/orders/<id>/` — order detail, with nested line items, exceptions, readiness checks, and match candidates
 - `POST /api/orders/extract/` — real extraction + hybrid matching from pasted order text
 - `POST /api/orders/<id>/send-to-erp/`
-- `POST /api/orders/reset-demo/` — resets the shared demo database back to the 4 sample orders
+- `POST /api/orders/reset-demo/` — resets the caller's own demo session back to the 4 sample orders (see "Per-visitor demo data" below)
 - `GET /api/catalog-items/`, `GET /api/catalog-items/<id>/`
 - `GET /api/setup-configuration/`, `PATCH /api/setup-configuration/<id>/` — auto-approve threshold, price-flag threshold, rule toggles
 - `GET /api/eval-runs/`, `GET /api/eval-runs/<id>/`
@@ -78,6 +78,17 @@ python manage.py run_eval
 Runs the actual extraction and matching pipeline against the 4 labeled
 sample orders and scores the result. Makes real OpenAI API calls and
 spends real credit, not something to run casually.
+
+## Per-visitor demo data
+
+There's no login, but each visitor's browser is tagged with a long-lived
+cookie (`common/middleware.py`'s `DemoSessionMiddleware`) the first time
+it hits the API. Every order, decision, and setup-configuration row is
+scoped to that cookie, so no visitor ever sees another visitor's orders
+or threshold changes — a new device or a cleared cookie just starts a
+fresh session with its own copy of the 4 sample orders (cloned from a
+global template, see `orders/services.py`'s `ensure_session_samples`).
+"Reset demo data" only ever resets the caller's own session.
 
 ## Regenerating seed data
 

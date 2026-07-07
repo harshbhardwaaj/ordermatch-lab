@@ -22,6 +22,13 @@ class OrderRecord(models.Model):
 
     id = models.CharField(primary_key=True, max_length=64)
 
+    # Which visitor this order belongs to (see
+    # common.middleware.DemoSessionMiddleware). Blank means a global
+    # template row seeded by seed_sample_data: never served directly by
+    # any API endpoint, only cloned per-session by
+    # orders.services.ensure_session_samples on a visitor's first request.
+    demo_session_id = models.CharField(max_length=40, blank=True, default="", db_index=True)
+
     # OrderHeader, flattened onto the order itself. order_number is the
     # customer-facing PO/RFQ number (e.g. "PO-2026-0142"), distinct from
     # this record's internal id (e.g. "ord-vh-2026-0142") and from

@@ -7,7 +7,9 @@ from .models import SetupConfiguration
 class SetupConfigurationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = "test-session-fixed"
         self.config = SetupConfiguration.objects.create(
+            demo_session_id="test-session-fixed",
             auto_approve_threshold=85,
             price_flag_threshold=15,
         )

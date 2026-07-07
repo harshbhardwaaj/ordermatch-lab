@@ -12,11 +12,18 @@ from onboarding.models import SetupConfiguration
 
 from .extraction import ExtractionError, extract_order
 from .models import OrderException, OrderLineItem, OrderRecord
+from .services import ensure_session_samples
+
+# Fixed so tests can create fixtures and set the test client's demo-session
+# cookie to the exact same value (see common.middleware.DemoSessionMiddleware),
+# rather than racing a real client-assigned random one.
+TEST_SESSION_ID = "test-session-fixed"
 
 
-def make_order(order_id="ord-test-1", status="review-needed"):
+def make_order(order_id="ord-test-1", status="review-needed", demo_session_id=TEST_SESSION_ID):
     return OrderRecord.objects.create(
         id=order_id,
+        demo_session_id=demo_session_id,
         order_number="PO-TEST-1",
         customer_name="Test Customer GmbH",
         source="pdf",
@@ -63,6 +70,7 @@ def make_candidate(line_item, catalog_item, candidate_id="match-test-1", rank=1)
 class OrderReadEndpointsTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
         self.order = make_order()
         self.catalog_item = make_catalog_item()
         self.line_item = make_line_item(self.order)
@@ -94,6 +102,7 @@ class OrderReadEndpointsTests(TestCase):
 class LineItemDecisionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
         self.order = make_order()
         self.catalog_item = make_catalog_item()
         self.line_item = make_line_item(self.order)
@@ -173,6 +182,7 @@ class LineItemDecisionTests(TestCase):
 class ExceptionResolutionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
         self.order = make_order()
         self.line_item = make_line_item(self.order)
         self.exception = OrderException.objects.create(
@@ -198,6 +208,7 @@ class ExceptionResolutionTests(TestCase):
 class SendToErpTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
         self.order = make_order()
         self.catalog_item = make_catalog_item()
 
@@ -300,6 +311,7 @@ class ExtractionModuleTests(TestCase):
 class ExtractOrderEndpointTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
         self.catalog_item = make_catalog_item()
 
     def test_extract_endpoint_creates_order_with_routed_line_items(self):
@@ -488,10 +500,21 @@ class ResetDemoDataTests(TestCase):
     """Covers the two real gaps found by reading seed_sample_data.py before
     building the reset: get_or_create silently not resetting setup config,
     and decisions on sample orders' lines never being touched by re-seeding.
+    Now session-scoped (see common.middleware.DemoSessionMiddleware and
+    orders.services.reset_demo_data): reset only ever touches the calling
+    session's own isolated copy of the data, never anyone else's.
     """
 
     def setUp(self):
         self.client = APIClient()
+        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        # A global template sample order (demo_session_id=""), the same
+        # shape seed_sample_data produces, for ensure_session_samples to
+        # clone from.
+        self.template = make_order(
+            order_id="ord-vh-2026-0142", demo_session_id="", status="review-needed"
+        )
+        make_line_item(self.template, line_id="vh-10", status="review-needed")
 
     def test_reset_deletes_real_orders_restores_setup_and_clears_sample_decisions(self):
         real_order = make_order(order_id="ord-live-test", status="ready")
@@ -499,15 +522,18 @@ class ResetDemoDataTests(TestCase):
         real_order.save()
 
         config = SetupConfiguration.objects.create(
-            auto_approve_threshold=60, price_flag_threshold=30
+            demo_session_id=TEST_SESSION_ID,
+            auto_approve_threshold=60,
+            price_flag_threshold=30,
         )
 
-        sample_order = make_order(order_id="ord-sample-test", status="review-needed")
-        sample_order.is_simulated = True
-        sample_order.save()
-        sample_line = make_line_item(sample_order, line_id="line-sample-test", status="matched")
+        ensure_session_samples(TEST_SESSION_ID)
+        session_sample = OrderRecord.objects.get(
+            demo_session_id=TEST_SESSION_ID, is_simulated=True
+        )
+        session_line = session_sample.line_items.get()
         MatchDecision.objects.create(
-            line_item=sample_line, decision="accepted", decided_at=timezone.now()
+            line_item=session_line, decision="accepted", decided_at=timezone.now()
         )
 
         response = self.client.post("/api/orders/reset-demo/", {}, format="json")
@@ -519,9 +545,68 @@ class ResetDemoDataTests(TestCase):
         self.assertEqual(config.auto_approve_threshold, 85)
         self.assertEqual(config.price_flag_threshold, 15)
 
-        self.assertEqual(
-            MatchDecision.objects.filter(line_item_id="line-sample-test").count(), 0
+        # The old decision on the sample-order copy's line is gone (the
+        # re-cloned copy happens to reuse the same deterministic id as the
+        # one it replaced, so checking the id alone wouldn't prove anything).
+        self.assertEqual(MatchDecision.objects.filter(line_item_id=session_line.id).count(), 0)
+
+        # Replaced by a fresh clone of the same template, undecided again.
+        fresh_sample = OrderRecord.objects.get(
+            demo_session_id=TEST_SESSION_ID, is_simulated=True
+        )
+        self.assertEqual(fresh_sample.line_items.get().status, "review-needed")
+
+        # The global template itself is untouched by a per-session reset.
+        self.assertTrue(OrderRecord.objects.filter(id=self.template.id).exists())
+
+    def test_reset_does_not_touch_another_sessions_data(self):
+        other_order = make_order(order_id="ord-other-session", demo_session_id="other-session")
+        self.client.post("/api/orders/reset-demo/", {}, format="json")
+        self.assertTrue(OrderRecord.objects.filter(id=other_order.id).exists())
+
+
+class DemoSessionIsolationTests(TestCase):
+    """Regression coverage for the actual point of demo-session scoping
+    (common.middleware.DemoSessionMiddleware): two different visitors,
+    identified only by their cookie, must never see each other's orders
+    or setup thresholds. Verified by real HTTP requests through the
+    actual endpoints, not by inspecting querysets directly.
+    """
+
+    def test_two_sessions_get_isolated_order_lists(self):
+        client_a = APIClient()
+        client_a.cookies["demo_session_id"] = "session-a"
+        client_b = APIClient()
+        client_b.cookies["demo_session_id"] = "session-b"
+
+        make_order(order_id="ord-a", demo_session_id="session-a")
+        make_order(order_id="ord-b", demo_session_id="session-b")
+
+        ids_a = {order["id"] for order in client_a.get("/api/orders/").json()}
+        ids_b = {order["id"] for order in client_b.get("/api/orders/").json()}
+
+        self.assertIn("ord-a", ids_a)
+        self.assertNotIn("ord-b", ids_a)
+        self.assertIn("ord-b", ids_b)
+        self.assertNotIn("ord-a", ids_b)
+
+    def test_a_new_visitor_with_no_cookie_gets_assigned_their_own_session(self):
+        response = APIClient().get("/api/orders/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("demo_session_id", response.cookies)
+
+    def test_setup_configuration_is_isolated_per_session(self):
+        client_a = APIClient()
+        client_a.cookies["demo_session_id"] = "session-config-a"
+        client_b = APIClient()
+        client_b.cookies["demo_session_id"] = "session-config-b"
+
+        config_id_a = client_a.get("/api/setup-configuration/").json()[0]["id"]
+        client_a.patch(
+            f"/api/setup-configuration/{config_id_a}/",
+            {"auto_approve_threshold": 42},
+            format="json",
         )
 
-        # Re-seeding should have restored the real 4 sample orders too.
-        self.assertTrue(OrderRecord.objects.filter(id="ord-vh-2026-0142").exists())
+        config_b = client_b.get("/api/setup-configuration/").json()[0]
+        self.assertEqual(config_b["auto_approve_threshold"], 85)

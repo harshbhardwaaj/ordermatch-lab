@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import uuid
 
-from django.core.management import call_command
 from django.db import transaction
 from django.utils import timezone
 
 from catalogs.models import CatalogItem
-from matching.models import MatchCandidate, MatchDecision
+from matching.models import MatchCandidate
 from matching.pipeline import CONFIDENT_MARGIN, match_order_lines
-from onboarding.models import SetupConfiguration
+from onboarding.models import DEFAULT_SETUP_CONFIGURATION, SetupConfiguration
 
 from .extraction import extract_order
 from .models import OrderLineItem, OrderRecord
@@ -34,11 +33,11 @@ def _confidence_band(score: float, auto_approve_threshold: float) -> str:
     return "review-needed"
 
 
-def _active_setup_configuration() -> SetupConfiguration:
-    config = SetupConfiguration.objects.first()
-    if config is not None:
-        return config
-    return SetupConfiguration.objects.create()
+def _active_setup_configuration(session_id: str) -> SetupConfiguration:
+    config, _ = SetupConfiguration.objects.get_or_create(
+        demo_session_id=session_id, defaults=DEFAULT_SETUP_CONFIGURATION
+    )
+    return config
 
 
 def _norm(value: str | None) -> str:
@@ -120,22 +119,29 @@ def _is_confidently_ahead(candidates) -> bool:
 
 
 @transaction.atomic
-def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
+def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRecord:
     """Raises orders.extraction.ExtractionError if extraction fails; no
     order is created in that case (T124). matching.pipeline.MatchingError
     is caught internally within match_order_lines, since a failed
     semantic-match call should degrade to deterministic-only results, not
     fail the order.
+
+    session_id scopes the created order and the setup-configuration
+    thresholds it's routed against to the calling visitor (see
+    common.middleware.DemoSessionMiddleware), so a "bring your own order"
+    submission is never visible to, or routed by, another visitor's
+    settings.
     """
     extracted = extract_order(pasted_text)
 
-    setup_config = _active_setup_configuration()
+    setup_config = _active_setup_configuration(session_id)
     catalog_items = list(CatalogItem.objects.filter(status="active"))
     discontinued_replacements = _discontinued_replacement_map()
     replacement_skus = set(discontinued_replacements.values())
 
     order = OrderRecord.objects.create(
         id=_new_id("ord-live"),
+        demo_session_id=session_id,
         order_number=f"PO-LIVE-{uuid.uuid4().hex[:8].upper()}",
         customer_name=extracted.get("customer_name") or "Unnamed customer",
         customer_reference=extracted.get("customer_reference") or "",
@@ -236,31 +242,106 @@ def create_order_from_pasted_text(pasted_text: str) -> OrderRecord:
     return order
 
 
-DEFAULT_SETUP_CONFIGURATION = {
-    "auto_approve_threshold": 85,
-    "price_flag_threshold": 15,
-    "stop_discontinued_items": True,
-    "review_noncatalog_items": True,
-    "flag_duplicate_lines": True,
-}
+def _clone_order_for_session(template: OrderRecord, session_id: str) -> None:
+    """Deep-clones one global template sample order (line items + match
+    candidates only) into a fresh copy tagged with this session. Nothing
+    in the live UI renders OrderException/ReadinessCheck (see T119's
+    note), so those aren't cloned — same scope decision already made for
+    real "bring your own" orders, which never get them either.
+    """
+    suffix = session_id[:12]
+    new_order = OrderRecord.objects.create(
+        id=f"{template.id}-{suffix}",
+        demo_session_id=session_id,
+        order_number=template.order_number,
+        customer_name=template.customer_name,
+        customer_reference=template.customer_reference,
+        source=template.source,
+        received_at=template.received_at,
+        requested_delivery_date=template.requested_delivery_date,
+        delivery_location=template.delivery_location,
+        currency=template.currency,
+        field_status=template.field_status,
+        status=template.status,
+        customer_profile=template.customer_profile,
+        source_document_summary=template.source_document_summary,
+        original_excerpt=template.original_excerpt,
+        ground_truth=template.ground_truth,
+        covered_edge_cases=template.covered_edge_cases,
+        is_simulated=template.is_simulated,
+    )
+
+    new_candidate_by_old_id: dict[str, MatchCandidate] = {}
+    for line in template.line_items.all():
+        new_line = OrderLineItem.objects.create(
+            id=f"{line.id}-{suffix}",
+            order=new_order,
+            line_number=line.line_number,
+            original_text=line.original_text,
+            normalized_name=line.normalized_name,
+            normalized_attributes=line.normalized_attributes,
+            quantity=line.quantity,
+            unit=line.unit,
+            requested_sku=line.requested_sku,
+            customer_part_number=line.customer_part_number,
+            unit_price=line.unit_price,
+            currency=line.currency,
+            status=line.status,
+        )
+        for candidate in line.match_candidates.all():
+            new_candidate_by_old_id[candidate.id] = MatchCandidate.objects.create(
+                id=f"{candidate.id}-{suffix}",
+                line_item=new_line,
+                catalog_item=candidate.catalog_item,
+                sku=candidate.sku,
+                confidence_band=candidate.confidence_band,
+                score=candidate.score,
+                rank=candidate.rank,
+                proof_items=candidate.proof_items,
+                missing_evidence=candidate.missing_evidence,
+                conflicting_evidence=candidate.conflicting_evidence,
+                requires_human_review=candidate.requires_human_review,
+            )
+        if line.selected_match_candidate_id:
+            new_selected = new_candidate_by_old_id.get(line.selected_match_candidate_id)
+            if new_selected:
+                new_line.selected_match_candidate = new_selected
+                new_line.save(update_fields=["selected_match_candidate"])
+
+
+def ensure_session_samples(session_id: str) -> None:
+    """Clones the global template sample orders (demo_session_id="",
+    seeded once by seed_sample_data, never served directly to any real
+    session) into this session's own copies, the first time this session
+    touches the orders API. Every visitor gets an isolated copy of the
+    same starting samples instead of one database shared by everyone.
+
+    Checks specifically for this session's own sample copies (is_simulated),
+    not "any order at all": a session whose very first request is a real
+    "bring your own order" submission (POST /api/orders/extract/, which
+    doesn't call this) would otherwise already have an order by the time
+    it first lists orders, and a broader check would wrongly treat that as
+    "already cloned" and permanently skip cloning the samples for it.
+    """
+    if OrderRecord.objects.filter(demo_session_id=session_id, is_simulated=True).exists():
+        return
+    with transaction.atomic():
+        for template in OrderRecord.objects.filter(demo_session_id="", is_simulated=True):
+            _clone_order_for_session(template, session_id)
 
 
 @transaction.atomic
-def reset_demo_data() -> None:
-    """Self-serve reset (no login exists, so this is shared across every
-    visitor): deletes every real "bring your own" order, clears any
-    decide/defer/reopen decisions left on the 4 sample orders' lines, then
-    restores the sample orders and setup thresholds to their original
-    seeded values.
-
-    Re-running seed_sample_data alone is not enough for two real reasons:
-    its setup-configuration step uses get_or_create, which leaves an
-    already-existing row untouched, so thresholds would not actually reset;
-    and it never touches MatchDecision at all, so a real decide/defer/
-    reopen action taken on a sample order's line during testing would
-    survive a reset and keep showing "Confirmed" instead of "Matched".
+def reset_demo_data(session_id: str) -> None:
+    """Self-serve reset, scoped to just the calling visitor's own
+    isolated demo data (see ensure_session_samples — no visitor can see
+    or affect another's data at all now, so this no longer needs to be
+    global): deletes this session's orders (real "bring your own" ones
+    and its own sample-order copies, cascading to their line items,
+    match candidates, and decisions), resets this session's setup
+    thresholds to the defaults, and re-clones fresh sample copies.
     """
-    OrderRecord.objects.filter(is_simulated=False).delete()
-    MatchDecision.objects.all().delete()
-    call_command("seed_sample_data")
-    SetupConfiguration.objects.all().update(**DEFAULT_SETUP_CONFIGURATION)
+    OrderRecord.objects.filter(demo_session_id=session_id).delete()
+    SetupConfiguration.objects.update_or_create(
+        demo_session_id=session_id, defaults=DEFAULT_SETUP_CONFIGURATION
+    )
+    ensure_session_samples(session_id)

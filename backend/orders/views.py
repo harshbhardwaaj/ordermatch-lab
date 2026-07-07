@@ -14,7 +14,7 @@ from .serializers import (
     OrderRecordListSerializer,
     OrderRecordSerializer,
 )
-from .services import create_order_from_pasted_text, reset_demo_data
+from .services import create_order_from_pasted_text, ensure_session_samples, reset_demo_data
 
 
 class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
@@ -26,8 +26,19 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
     is derived from the same persisted line item state.
     """
 
-    queryset = OrderRecord.objects.all()
     lookup_field = "id"
+
+    def get_queryset(self):
+        """Scoped to the calling visitor's own demo session (see
+        common.middleware.DemoSessionMiddleware) so every visitor sees
+        only their own copy of the sample orders and their own "bring
+        your own" orders, never anyone else's. Ensures this session's
+        sample-order copies exist before every list/retrieve, since this
+        is the one place every visitor's first request always passes
+        through.
+        """
+        ensure_session_samples(self.request.demo_session_id)
+        return OrderRecord.objects.filter(demo_session_id=self.request.demo_session_id)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -65,7 +76,7 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
         """
         pasted_text = request.data.get("pasted_text", "")
         try:
-            order = create_order_from_pasted_text(pasted_text)
+            order = create_order_from_pasted_text(pasted_text, request.demo_session_id)
         except ExtractionError as exc:
             # Safe to surface directly: every ExtractionError is raised with
             # a hardcoded, curated literal in extraction.py, never a wrapped
@@ -77,13 +88,16 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="reset-demo")
     def reset_demo(self, request):
-        """Self-serve reset for a shared demo with no login: deletes every
-        real "bring your own" order and restores the 4 sample orders and
-        setup thresholds to their original state. Destructive and global
-        (affects every visitor, not just the caller), so the frontend
-        requires an explicit confirm step before calling this.
+        """Self-serve reset, scoped to the caller's own isolated demo
+        session (see common.middleware.DemoSessionMiddleware): deletes
+        this visitor's own "bring your own" orders and sample-order
+        copies and restores their own sample orders and setup thresholds
+        to the original defaults. Destructive but session-local, not
+        global — it no longer touches any other visitor's data, still
+        gated behind an explicit confirm step in the frontend since it's
+        still a real "start over" action.
         """
-        reset_demo_data()
+        reset_demo_data(request.demo_session_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -96,9 +110,13 @@ class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):
     "decide later", so none is built here.
     """
 
-    queryset = OrderLineItem.objects.all()
     serializer_class = OrderLineItemSerializer
     lookup_field = "id"
+
+    def get_queryset(self):
+        return OrderLineItem.objects.filter(
+            order__demo_session_id=self.request.demo_session_id
+        )
 
     @action(detail=True, methods=["post"])
     def decide(self, request, id=None):
@@ -175,9 +193,13 @@ class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):
 class OrderExceptionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list/retrieve, plus resolving a flagged exception (T108)."""
 
-    queryset = OrderException.objects.all()
     serializer_class = OrderExceptionSerializer
     lookup_field = "id"
+
+    def get_queryset(self):
+        return OrderException.objects.filter(
+            order__demo_session_id=self.request.demo_session_id
+        )
 
     @action(detail=True, methods=["post"])
     def resolve(self, request, id=None):

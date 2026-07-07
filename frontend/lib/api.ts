@@ -21,6 +21,10 @@ async function apiFetch(path: string, options?: RequestInit) {
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      // Sends and stores the per-visitor demo-session cookie (see the
+      // backend's common.middleware.DemoSessionMiddleware) even though
+      // the frontend and backend are different origins/domains.
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
     });
   } catch {
