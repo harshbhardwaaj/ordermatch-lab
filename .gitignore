@@ -1,6 +1,7 @@
 .DS_Store
 .idea/
 .claude/
+docs/story-bank-harsh.md
 
 # Environment and secrets
 .env
