@@ -2,6 +2,9 @@
 .idea/
 .claude/
 docs/story-bank-harsh.md
+docs/spec-kit/constitution.md
+docs/spec-kit/tasks.md
+docs/design-system/constitution-check.md
 
 # Environment and secrets
 .env
