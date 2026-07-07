@@ -70,7 +70,7 @@ def make_candidate(line_item, catalog_item, candidate_id="match-test-1", rank=1)
 class OrderReadEndpointsTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         self.order = make_order()
         self.catalog_item = make_catalog_item()
         self.line_item = make_line_item(self.order)
@@ -102,7 +102,7 @@ class OrderReadEndpointsTests(TestCase):
 class LineItemDecisionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         self.order = make_order()
         self.catalog_item = make_catalog_item()
         self.line_item = make_line_item(self.order)
@@ -182,7 +182,7 @@ class LineItemDecisionTests(TestCase):
 class ExceptionResolutionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         self.order = make_order()
         self.line_item = make_line_item(self.order)
         self.exception = OrderException.objects.create(
@@ -208,7 +208,7 @@ class ExceptionResolutionTests(TestCase):
 class SendToErpTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         self.order = make_order()
         self.catalog_item = make_catalog_item()
 
@@ -311,7 +311,7 @@ class ExtractionModuleTests(TestCase):
 class ExtractOrderEndpointTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         self.catalog_item = make_catalog_item()
 
     def test_extract_endpoint_creates_order_with_routed_line_items(self):
@@ -507,7 +507,7 @@ class ResetDemoDataTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.client.cookies["demo_session_id"] = TEST_SESSION_ID
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID=TEST_SESSION_ID)
         # A global template sample order (demo_session_id=""), the same
         # shape seed_sample_data produces, for ensure_session_samples to
         # clone from.
@@ -575,9 +575,9 @@ class DemoSessionIsolationTests(TestCase):
 
     def test_two_sessions_get_isolated_order_lists(self):
         client_a = APIClient()
-        client_a.cookies["demo_session_id"] = "session-a"
+        client_a.credentials(HTTP_X_DEMO_SESSION_ID="session-a")
         client_b = APIClient()
-        client_b.cookies["demo_session_id"] = "session-b"
+        client_b.credentials(HTTP_X_DEMO_SESSION_ID="session-b")
 
         make_order(order_id="ord-a", demo_session_id="session-a")
         make_order(order_id="ord-b", demo_session_id="session-b")
@@ -590,16 +590,16 @@ class DemoSessionIsolationTests(TestCase):
         self.assertIn("ord-b", ids_b)
         self.assertNotIn("ord-a", ids_b)
 
-    def test_a_new_visitor_with_no_cookie_gets_assigned_their_own_session(self):
+    def test_a_new_visitor_with_no_session_header_gets_assigned_their_own_session(self):
         response = APIClient().get("/api/orders/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("demo_session_id", response.cookies)
+        self.assertTrue(response["X-Demo-Session-Id"])
 
     def test_setup_configuration_is_isolated_per_session(self):
         client_a = APIClient()
-        client_a.cookies["demo_session_id"] = "session-config-a"
+        client_a.credentials(HTTP_X_DEMO_SESSION_ID="session-config-a")
         client_b = APIClient()
-        client_b.cookies["demo_session_id"] = "session-config-b"
+        client_b.credentials(HTTP_X_DEMO_SESSION_ID="session-config-b")
 
         config_id_a = client_a.get("/api/setup-configuration/").json()[0]["id"]
         client_a.patch(

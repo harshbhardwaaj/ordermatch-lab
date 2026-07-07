@@ -144,6 +144,7 @@ describe("fetch functions against a mocked backend", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
+      headers: new Headers(),
       json: async () => [
         {
           id: "ord-vh-2026-0142",
@@ -182,6 +183,7 @@ describe("fetch functions against a mocked backend", () => {
       ok: false,
       status: 400,
       statusText: "Bad Request",
+      headers: new Headers(),
       json: async () => ({ detail: "Provide exactly one of candidate_id or custom_label." }),
     });
 
@@ -195,6 +197,7 @@ describe("fetch functions against a mocked backend", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
+      headers: new Headers(),
       json: async () => ({ ...RAW_ORDER.line_items[0], status: "matched" }),
     });
 
@@ -208,6 +211,7 @@ describe("fetch functions against a mocked backend", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
+      headers: new Headers(),
       json: async () => ({ ...RAW_ORDER.line_items[0], status: "matched" }),
     });
 
@@ -221,6 +225,7 @@ describe("fetch functions against a mocked backend", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
+      headers: new Headers(),
       json: async () => RAW_ORDER.line_items[0],
     });
 
@@ -235,6 +240,7 @@ describe("fetch functions against a mocked backend", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
+      headers: new Headers(),
       json: async () => ({
         id: 1,
         auto_approve_threshold: 90,

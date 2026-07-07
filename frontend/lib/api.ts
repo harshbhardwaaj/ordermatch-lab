@@ -16,20 +16,47 @@ export class ApiError extends Error {
   }
 }
 
+/* Per-visitor demo-session id (see the backend's common.middleware.
+ * DemoSessionMiddleware): sent as a plain header and stored in
+ * localStorage, not a cookie. A cookie was tried first, but WebKit
+ * (Safari, and every browser on iOS, which all use WebKit under the
+ * hood) unreliably dropped a cross-site cookie between requests, so
+ * every visitor kept losing their session and hitting stale-order 404s.
+ * A header the app manages itself isn't subject to any browser's
+ * cross-site cookie policy at all. ------------------------------------ */
+
+const DEMO_SESSION_STORAGE_KEY = "demo_session_id";
+const DEMO_SESSION_HEADER = "X-Demo-Session-Id";
+
+function getStoredDemoSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(DEMO_SESSION_STORAGE_KEY);
+}
+
+function storeDemoSessionId(id: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DEMO_SESSION_STORAGE_KEY, id);
+}
+
 async function apiFetch(path: string, options?: RequestInit) {
+  const sessionId = getStoredDemoSessionId();
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      // Sends and stores the per-visitor demo-session cookie (see the
-      // backend's common.middleware.DemoSessionMiddleware) even though
-      // the frontend and backend are different origins/domains.
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(sessionId ? { [DEMO_SESSION_HEADER]: sessionId } : {}),
+        ...(options?.headers ?? {}),
+      },
     });
   } catch {
     throw new ApiError(0, "Could not reach the backend. It may be offline.");
   }
+
+  const returnedSessionId = response.headers.get(DEMO_SESSION_HEADER);
+  if (returnedSessionId) storeDemoSessionId(returnedSessionId);
 
   if (!response.ok) {
     const detail = await response

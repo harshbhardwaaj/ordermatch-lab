@@ -2,46 +2,38 @@
 
 import secrets
 
-from django.conf import settings
-
-DEMO_SESSION_COOKIE_NAME = "demo_session_id"
-DEMO_SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+DEMO_SESSION_REQUEST_HEADER = "HTTP_X_DEMO_SESSION_ID"  # WSGI META key for X-Demo-Session-Id
+DEMO_SESSION_RESPONSE_HEADER = "X-Demo-Session-Id"
 
 
 class DemoSessionMiddleware:
-    """Tags every request with a per-browser demo-session id, backed by a
-    long-lived cookie, so each visitor gets an isolated copy of the demo
-    data instead of one database shared by everyone (see
-    orders.services.ensure_session_samples). A new device/browser, or a
-    cleared cookie, gets a new session id and a fresh set of sample
-    orders; nothing is shared across sessions.
+    """Tags every request with a per-visitor demo-session id, carried as a
+    plain header (X-Demo-Session-Id) rather than a cookie, so each visitor
+    gets an isolated copy of the demo data instead of one database shared
+    by everyone (see orders.services.ensure_session_samples).
 
-    Deliberately not django.contrib.sessions: there's no session data to
-    store server-side beyond this id itself, and a bespoke cookie avoids
-    entangling this with the admin login session's cookie settings, which
-    need to differ (this cookie is read cross-site, from the Vercel
-    frontend calling the Render backend; the admin login session isn't).
+    A cookie was the first approach here, but real testing found it
+    unreliable cross-site: the frontend (Vercel) and backend (Render) are
+    different registrable domains, and WebKit (Safari, and every browser
+    on iOS/iPadOS, which are all required to use WebKit under the hood)
+    silently failed to persist a SameSite=None cookie across requests,
+    while Chrome on desktop worked fine. A header the frontend stores in
+    localStorage and resends itself isn't subject to any browser's
+    third-party-cookie policy at all, so this sidesteps the problem
+    entirely instead of working around one browser's specific behavior.
+
+    The frontend always sends whatever id it already has; a request with
+    none gets a freshly minted one, always echoed back in the response so
+    the frontend can persist it for next time.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        session_id = request.COOKIES.get(DEMO_SESSION_COOKIE_NAME)
-        is_new = not session_id
-        if is_new:
-            session_id = secrets.token_hex(16)
+        session_id = request.META.get(DEMO_SESSION_REQUEST_HEADER) or secrets.token_hex(16)
         request.demo_session_id = session_id
 
         response = self.get_response(request)
-
-        if is_new:
-            response.set_cookie(
-                DEMO_SESSION_COOKIE_NAME,
-                session_id,
-                max_age=DEMO_SESSION_COOKIE_MAX_AGE,
-                samesite="Lax" if settings.DEBUG else "None",
-                secure=not settings.DEBUG,
-                httponly=True,
-            )
+        response[DEMO_SESSION_RESPONSE_HEADER] = session_id
         return response

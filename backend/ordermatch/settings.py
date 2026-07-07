@@ -11,7 +11,10 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
+
+from common.middleware import DEMO_SESSION_RESPONSE_HEADER
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -153,11 +156,15 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Required for the per-visitor demo-session cookie (common.middleware.
-# DemoSessionMiddleware) to survive a cross-site fetch from the frontend's
-# origin — without this, the browser silently drops the cookie and every
-# visitor would fall back to sharing one session.
-CORS_ALLOW_CREDENTIALS = True
+# Lets the frontend send/read the per-visitor demo-session id (common.
+# middleware.DemoSessionMiddleware) as a plain header rather than a
+# cookie — a cookie was tried first but WebKit (Safari, and every
+# browser on iOS, which all use WebKit under the hood) unreliably
+# dropped a cross-site SameSite=None cookie between requests. A header
+# stored in the frontend's localStorage isn't subject to any browser's
+# cookie policy at all.
+CORS_ALLOW_HEADERS = list(default_headers) + [DEMO_SESSION_RESPONSE_HEADER.lower()]
+CORS_EXPOSE_HEADERS = [DEMO_SESSION_RESPONSE_HEADER]
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
