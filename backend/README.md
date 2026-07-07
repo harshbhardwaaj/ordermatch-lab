@@ -81,13 +81,18 @@ spends real credit, not something to run casually.
 
 ## Per-visitor demo data
 
-There's no login, but each visitor's browser is tagged with a long-lived
-cookie (`common/middleware.py`'s `DemoSessionMiddleware`) the first time
-it hits the API. Every order, decision, and setup-configuration row is
-scoped to that cookie, so no visitor ever sees another visitor's orders
-or threshold changes — a new device or a cleared cookie just starts a
-fresh session with its own copy of the 4 sample orders (cloned from a
-global template, see `orders/services.py`'s `ensure_session_samples`).
+There's no login, but each visitor's browser is tagged with an id (an
+`X-Demo-Session-Id` header the frontend stores in `localStorage` and
+resends itself, see `common/middleware.py`'s `DemoSessionMiddleware`)
+the first time it hits the API. A cookie was tried first, but WebKit
+(Safari, and every browser on iOS, which all use WebKit under the hood)
+unreliably dropped a cross-site cookie between requests, so this uses a
+plain header instead, which isn't subject to any browser's cookie
+policy. Every order, decision, and setup-configuration row is scoped to
+that id, so no visitor ever sees another visitor's orders or threshold
+changes — a new device or cleared storage just starts a fresh session
+with its own copy of the 4 sample orders (cloned from a global
+template, see `orders/services.py`'s `ensure_session_samples`).
 "Reset demo data" only ever resets the caller's own session.
 
 ## Regenerating seed data
