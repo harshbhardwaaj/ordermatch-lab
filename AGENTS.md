@@ -15,7 +15,7 @@ Small factual answers, status checks, and explicitly requested terminal-only act
 
 Use the `spec-kit` workflow for substantial project work, especially when the user says things like "spec this", "spec-driven", "let's spec this out", "plan this properly", or "I want to build X".
 
-Spec Kit artifacts live in `docs/spec-kit/`. Before continuing any spec-driven planning, read the existing artifacts there so the constitution, specification, plan, and tasks stay aligned.
+Spec Kit artifacts live in `docs/spec-kit/`. Before continuing any spec-driven planning, read the existing artifacts there so new work stays aligned with the specification and plan.
 
 ## Product Story Context
 
