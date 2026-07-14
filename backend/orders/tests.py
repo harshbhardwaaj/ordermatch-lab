@@ -726,3 +726,30 @@ class StatedSupersessionTests(TestCase):
         candidates = [FakeCandidate("A", 90.0), FakeCandidate("B", 80.0)]
         unchanged = _hoist_stated_replacement(candidates, None, "")
         self.assertEqual([c.catalog_item.sku for c in unchanged], ["A", "B"])
+
+
+class PickerDedupeTests(TestCase):
+    """One SKU, one row. The two retrievers plus a hoisted replacement can each
+    surface the same part; a picker that shows it twice reads as a bug."""
+
+    def test_duplicate_skus_collapse_keeping_the_highest_ranked(self):
+        from orders.services import _dedupe_candidates_by_sku
+
+        class FakeItem:
+            def __init__(self, sku):
+                self.sku = sku
+
+        class FakeCandidate:
+            def __init__(self, sku, tag):
+                self.catalog_item = FakeItem(sku)
+                self.tag = tag
+
+        candidates = [
+            FakeCandidate("OM-A", "first"),
+            FakeCandidate("OM-B", "keep"),
+            FakeCandidate("om-a", "dupe-different-case"),  # same SKU, later
+            FakeCandidate("OM-A", "dupe-exact"),
+        ]
+        result = _dedupe_candidates_by_sku(candidates)
+        self.assertEqual([c.catalog_item.sku for c in result], ["OM-A", "OM-B"])
+        self.assertEqual(result[0].tag, "first")  # the first occurrence survives

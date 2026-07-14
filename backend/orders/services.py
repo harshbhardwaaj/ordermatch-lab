@@ -111,6 +111,20 @@ def _is_substitution(candidate, stated_replacement_sku: str | None, replacement_
     return candidate.matched_via == "llm" and sku in replacement_skus
 
 
+def _dedupe_candidates_by_sku(candidates):
+    """Collapse candidates that point at the same catalog SKU, keeping the first
+    (highest-ranked). Order is preserved; only later duplicates are dropped."""
+    seen = set()
+    unique = []
+    for candidate in candidates:
+        key = _norm(candidate.catalog_item.sku)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
 def _hoist_stated_replacement(candidates, stated_replacement_sku: str | None, stated_identifier: str):
     """When the customer names a discontinued part, put its designated
     replacement at the top of the picker.
@@ -132,8 +146,14 @@ def _hoist_stated_replacement(candidates, stated_replacement_sku: str | None, st
     if not stated_replacement_sku:
         return candidates
 
+    target = _norm(stated_replacement_sku)
+    # Normalized comparison, deliberately. A raw == here misses a candidate the
+    # retriever already returned when it differs only in case or spacing, and the
+    # function then falls through and inserts a second copy of the same part —
+    # the reviewer sees the replacement listed twice. Matching on the normalized
+    # SKU means the existing candidate is found and simply moved to the front.
     for index, candidate in enumerate(candidates):
-        if candidate.catalog_item.sku == stated_replacement_sku:
+        if _norm(candidate.catalog_item.sku) == target:
             if index:
                 candidates.insert(0, candidates.pop(index))
             return candidates
@@ -284,6 +304,12 @@ def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRec
         stated_replacement_sku = discontinued_replacements.get(stated_identifier) if stated_identifier else None
         # The catalog knows what supersedes what. Show that first.
         candidates = _hoist_stated_replacement(candidates, stated_replacement_sku, stated_identifier)
+        # One SKU, one row in the picker. The two retrievers plus a hoisted
+        # replacement can each surface the same part, and a picker that lists the
+        # same part twice reads as a bug — most visibly on the supersession path,
+        # where the replacement is the row most likely to arrive by two routes.
+        # Keep the highest-ranked occurrence, drop the rest.
+        candidates = _dedupe_candidates_by_sku(candidates)
         confidently_ahead = _is_confidently_ahead(candidates)
 
         top_row = None
