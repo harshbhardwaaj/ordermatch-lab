@@ -152,7 +152,7 @@ class BatchedMatchingTests(TestCase):
             "attributes": [],
         }
 
-        def fake_batch(indexed_lines, catalog_items):
+        def fake_batch(indexed_lines, catalog_items, memory_examples=None):
             return {
                 index: [
                     {
@@ -205,3 +205,141 @@ class BatchedMatchingTests(TestCase):
         mock_batch.assert_called_once()
         called_indexed_lines = mock_batch.call_args[0][0]
         self.assertEqual([index for index, _ in called_indexed_lines], [1])
+
+
+class CustomerMemoryTests(TestCase):
+    """The learning loop: a correction on one order must change the ranking
+    on the next one, for that customer and not for anyone else.
+    """
+
+    def setUp(self):
+        self.cheap = make_catalog_item(
+            "cat-a", "OM-FAS-HB-M8X40-ZN-D933", "Hex bolt M8x40 zinc DIN 933"
+        )
+        self.premium = make_catalog_item(
+            "cat-b", "OM-FAS-HB-M8X40-A4-D933", "Hex bolt M8x40 A4 DIN 933"
+        )
+        self.session = "sess-1"
+
+    def _order_with_candidates(self, customer_name, text="hex bolt m8x40 500x"):
+        """One order, one line, two candidates: the AI puts the zinc bolt on
+        top, the A4 second. The realistic shape of the case brief's example.
+        """
+        from django.utils import timezone
+
+        from matching.models import MatchCandidate
+        from orders.models import OrderLineItem, OrderRecord
+
+        order = OrderRecord.objects.create(
+            id=f"ord-{customer_name}-{timezone.now().timestamp()}",
+            demo_session_id=self.session,
+            customer_name=customer_name,
+            source="pasted-text",
+            received_at=timezone.now(),
+            currency="EUR",
+            status="review-needed",
+        )
+        line = OrderLineItem.objects.create(
+            id=f"{order.id}-line-1",
+            order=order,
+            line_number=1,
+            original_text=text,
+            status="review-needed",
+        )
+        for rank, item in enumerate([self.cheap, self.premium], start=1):
+            MatchCandidate.objects.create(
+                id=f"{line.id}-cand-{rank}",
+                line_item=line,
+                catalog_item=item,
+                sku=item.sku,
+                confidence_band="review-needed",
+                score=80 - rank,
+                rank=rank,
+            )
+        return line
+
+    def test_correction_reranks_the_same_request_next_time(self):
+        from matching.memory import apply_memory, load_customer_memory, record_correction
+        from matching.pipeline import ScoredCandidate
+
+        line = self._order_with_candidates("Vogt Hydraulik GmbH")
+        chosen = line.match_candidates.get(rank=2)  # human picks the A4 bolt
+
+        record_correction(session_id=self.session, line_item=line, chosen_candidate=chosen)
+
+        memory = load_customer_memory(self.session, "Vogt Hydraulik GmbH")
+        fresh = [
+            ScoredCandidate(catalog_item=self.cheap, score=79.0),
+            ScoredCandidate(catalog_item=self.premium, score=78.0),
+        ]
+        reranked = apply_memory(memory, "hex bolt m8x40 500x", fresh)
+
+        self.assertEqual(reranked[0].catalog_item.sku, self.premium.sku)
+        self.assertTrue(reranked[0].learned_signal["pinned"])
+        self.assertEqual(reranked[0].learned_signal["timesChosen"], 1)
+        # and the SKU the reviewer overruled is recorded as rejected
+        self.assertEqual(reranked[1].learned_signal["timesRejected"], 1)
+
+    def test_memory_does_not_leak_between_customers(self):
+        """The whole reason this is scoped per customer: the same words mean
+        a different grade to a different buyer.
+        """
+        from matching.memory import apply_memory, load_customer_memory, record_correction
+        from matching.pipeline import ScoredCandidate
+
+        line = self._order_with_candidates("Vogt Hydraulik GmbH")
+        record_correction(
+            session_id=self.session,
+            line_item=line,
+            chosen_candidate=line.match_candidates.get(rank=2),
+        )
+
+        other = load_customer_memory(self.session, "LakePort Maintenance Supply LLC")
+        self.assertTrue(other.is_empty())
+
+        fresh = [
+            ScoredCandidate(catalog_item=self.cheap, score=79.0),
+            ScoredCandidate(catalog_item=self.premium, score=78.0),
+        ]
+        unchanged = apply_memory(other, "hex bolt m8x40 500x", fresh)
+        self.assertEqual(unchanged[0].catalog_item.sku, self.cheap.sku)
+
+    def test_confirming_the_top_pick_is_logged_but_teaches_no_rejection(self):
+        from matching.memory import load_customer_memory, record_correction
+
+        line = self._order_with_candidates("Vogt Hydraulik GmbH")
+        correction = record_correction(
+            session_id=self.session,
+            line_item=line,
+            chosen_candidate=line.match_candidates.get(rank=1),
+        )
+
+        self.assertFalse(correction.was_correction)
+        memory = load_customer_memory(self.session, "Vogt Hydraulik GmbH")
+        self.assertEqual(memory.by_sku[self.cheap.sku]["chosen"], 1)
+        self.assertNotIn(self.premium.sku, memory.by_sku)
+        # a confirmation is not a correction, so it is not fed to the LLM
+        self.assertEqual(memory.examples, [])
+
+    def test_corrections_are_fed_to_the_llm_as_examples(self):
+        from matching.memory import load_customer_memory, record_correction
+
+        line = self._order_with_candidates("Vogt Hydraulik GmbH")
+        record_correction(
+            session_id=self.session,
+            line_item=line,
+            chosen_candidate=line.match_candidates.get(rank=2),
+        )
+
+        memory = load_customer_memory(self.session, "Vogt Hydraulik GmbH")
+        self.assertEqual(len(memory.examples), 1)
+        self.assertEqual(memory.examples[0]["ai_suggested_sku"], self.cheap.sku)
+        self.assertEqual(memory.examples[0]["human_corrected_to_sku"], self.premium.sku)
+
+    def test_normalization_recognizes_the_same_request_retyped(self):
+        from matching.memory import normalize_request_text
+
+        self.assertEqual(
+            normalize_request_text("500x Hex Bolt, M8x40!"),
+            normalize_request_text("  500x   hex bolt m8x40 "),
+        )

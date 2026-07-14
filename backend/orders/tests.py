@@ -327,7 +327,7 @@ class ExtractOrderEndpointTests(TestCase):
             ],
         }
 
-        def fake_match_order_lines(line_items, catalog_items):
+        def fake_match_order_lines(line_items, catalog_items, memory=None):
             results = []
             for line in line_items:
                 if line["description"] == "confident item":

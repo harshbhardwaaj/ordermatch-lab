@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { MatchPickList } from "@/components/product/match-pick-list";
@@ -300,7 +308,7 @@ export function OrderSummary({ orderId }: { orderId: string }) {
               );
               const proofItems = candidate?.proofItems ?? [];
               const expanded = expandedLines.has(line.id);
-              const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 3);
+              const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 10);
               const isPending = pendingLineId === line.id;
               const isDeferred = deferredLineIds.has(line.id);
 
@@ -404,6 +412,25 @@ export function OrderSummary({ orderId }: { orderId: string }) {
               );
             })}
           </div>
+
+          {/* Every decision above was logged against this customer and will
+              re-rank their next order. Say so where the decisions were made,
+              not on a settings page nobody opens. */}
+          <TransitionLink
+            href="/prototype/customers"
+            className="flex items-center justify-between gap-3 rounded-md border border-[var(--om-border)] bg-[var(--om-surface)] px-4 py-3 transition-colors hover:border-[var(--om-accent)]"
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--om-text)]">
+                <Sparkles className="size-3.5 text-[var(--om-accent)]" />
+                What we&apos;ve learned about {order.header.customerName}
+              </span>
+              <span className="mt-0.5 block text-xs text-[var(--om-muted)]">
+                Your decisions here train the next order from this customer.
+              </span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 text-[var(--om-muted)]" />
+          </TransitionLink>
 
           {sent ? (
             <div className="flex flex-col items-center gap-3">

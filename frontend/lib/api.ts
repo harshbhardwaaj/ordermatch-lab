@@ -1,4 +1,5 @@
 import type { CatalogItem } from "@/types/catalog";
+import type { CustomerMemory, CustomerMemorySummary } from "@/types/customer";
 import type { MatchCandidate } from "@/types/match";
 import type { OrderException, ReadinessCheck } from "@/types/order";
 import type { SyntheticOrderRecord } from "@/data/orders";
@@ -94,6 +95,12 @@ type RawMatchCandidate = {
   missing_evidence: string[];
   conflicting_evidence: string[];
   requires_human_review: boolean;
+  // Absent on a candidate matched before the customer taught us anything.
+  learned_signal?: {
+    timesChosen?: number;
+    timesRejected?: number;
+    pinned?: boolean;
+  } | null;
 };
 
 type RawLineItem = {
@@ -218,6 +225,14 @@ function adaptMatchCandidate(raw: RawMatchCandidate): MatchCandidate {
     missingEvidence: raw.missing_evidence,
     conflictingEvidence: raw.conflicting_evidence,
     requiresHumanReview: raw.requires_human_review,
+    learnedSignal:
+      raw.learned_signal && Object.keys(raw.learned_signal).length > 0
+        ? {
+            timesChosen: raw.learned_signal.timesChosen ?? 0,
+            timesRejected: raw.learned_signal.timesRejected ?? 0,
+            pinned: raw.learned_signal.pinned,
+          }
+        : undefined,
   };
 }
 
@@ -488,4 +503,84 @@ export async function resolveException(exceptionId: string): Promise<OrderExcept
 export async function resetDemoData(): Promise<void> {
   await apiFetch("/api/orders/reset-demo/", { method: "POST" });
   catalogItemsCache = null;
+}
+
+/* Per-customer match memory (backend: matching/memory.py, matching/views.py).
+ * ------------------------------------------------------------------- */
+
+type RawCustomerSummary = {
+  customer_key: string;
+  customer_name: string;
+  total_decisions: number;
+  corrections: number;
+};
+
+type RawCustomerCorrection = {
+  id: string;
+  request_text: string;
+  suggested_sku: string;
+  chosen_sku: string;
+  custom_label: string;
+  chosen_rank: number | null;
+  was_correction: boolean;
+  order_number: string;
+  created_at: string;
+};
+
+type RawLearnedRule = {
+  normalized_request: string;
+  sku: string;
+  times_chosen: number;
+  times_rejected: number;
+  pinned: boolean;
+};
+
+type RawCustomerMemory = RawCustomerSummary & {
+  history: RawCustomerCorrection[];
+  learned_rules: RawLearnedRule[];
+};
+
+export async function fetchCustomers(): Promise<CustomerMemorySummary[]> {
+  const raw: RawCustomerSummary[] = await apiFetch("/api/customers/");
+  return raw.map((row) => ({
+    customerKey: row.customer_key,
+    customerName: row.customer_name,
+    totalDecisions: row.total_decisions,
+    corrections: row.corrections,
+  }));
+}
+
+export async function fetchCustomerMemory(customerKey: string): Promise<CustomerMemory> {
+  const raw: RawCustomerMemory = await apiFetch(`/api/customers/${customerKey}/`);
+  return {
+    customerKey: raw.customer_key,
+    customerName: raw.customer_name,
+    totalDecisions: raw.total_decisions,
+    corrections: raw.corrections,
+    history: raw.history.map((row) => ({
+      id: row.id,
+      requestText: row.request_text,
+      suggestedSku: row.suggested_sku,
+      chosenSku: row.chosen_sku,
+      customLabel: row.custom_label,
+      chosenRank: row.chosen_rank ?? undefined,
+      wasCorrection: row.was_correction,
+      orderNumber: row.order_number,
+      createdAt: row.created_at,
+    })),
+    learnedRules: raw.learned_rules.map((row) => ({
+      normalizedRequest: row.normalized_request,
+      sku: row.sku,
+      timesChosen: row.times_chosen,
+      timesRejected: row.times_rejected,
+      pinned: row.pinned,
+    })),
+  };
+}
+
+export async function forgetCorrection(customerKey: string, correctionId: string): Promise<void> {
+  await apiFetch(`/api/customers/${customerKey}/forget/`, {
+    method: "POST",
+    body: JSON.stringify({ correction_id: correctionId }),
+  });
 }

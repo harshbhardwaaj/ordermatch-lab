@@ -13,7 +13,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from catalogs.models import CatalogItem
-from matching.models import MatchCandidate
+from matching.memory import load_customer_memory
+from matching.models import CustomerCorrection, CustomerPreference, MatchCandidate
 from matching.pipeline import CONFIDENT_MARGIN, match_order_lines
 from onboarding.models import DEFAULT_SETUP_CONFIGURATION, SetupConfiguration
 
@@ -158,11 +159,18 @@ def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRec
 
     any_unresolved = False
 
+    # Everything this customer has already taught us (matching.memory).
+    # Loaded once per order, after the header is extracted, because the
+    # memory is keyed on who is asking — the same line text means different
+    # SKUs to different buyers, which is the whole reason this is scoped per
+    # customer rather than globally.
+    memory = load_customer_memory(session_id, order.customer_name)
+
     # Matched once for the whole order (at most one combined OpenAI call
     # for every ambiguous line together), not once per line item, so a
     # large order with many ambiguous lines doesn't mean that many
     # sequential round trips.
-    all_candidates = match_order_lines(extracted["line_items"], catalog_items)
+    all_candidates = match_order_lines(extracted["line_items"], catalog_items, memory=memory)
 
     for index, (line, candidates) in enumerate(zip(extracted["line_items"], all_candidates), start=1):
         line_item = OrderLineItem.objects.create(
@@ -207,6 +215,7 @@ def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRec
                 rank=rank,
                 proof_items=proof_items,
                 missing_evidence=candidate.missing_evidence,
+                learned_signal=candidate.learned_signal,
                 requires_human_review=(
                     is_substitution
                     or candidate.score < setup_config.auto_approve_threshold
@@ -328,6 +337,48 @@ def ensure_session_samples(session_id: str) -> None:
     with transaction.atomic():
         for template in OrderRecord.objects.filter(demo_session_id="", is_simulated=True):
             _clone_order_for_session(template, session_id)
+        _clone_customer_memory_for_session(session_id)
+
+
+def _clone_customer_memory_for_session(session_id: str) -> None:
+    """Clones the seeded customer-memory templates (demo_session_id="",
+    see seed_sample_data._seed_customer_memory) into this visitor's own
+    copy, so the memory screen has real history on a first visit instead of
+    an empty state — and so the two seeded customers' contradictory
+    preferences are there to be seen.
+
+    Same template/clone pattern the sample orders use. A visitor's own
+    corrections then accumulate on top of these.
+    """
+    suffix = session_id[:12]
+    for template in CustomerCorrection.objects.filter(demo_session_id=""):
+        CustomerCorrection.objects.get_or_create(
+            id=f"{template.id}-{suffix}",
+            defaults={
+                "demo_session_id": session_id,
+                "customer_key": template.customer_key,
+                "customer_name": template.customer_name,
+                "request_text": template.request_text,
+                "normalized_request": template.normalized_request,
+                "suggested_sku": template.suggested_sku,
+                "chosen_sku": template.chosen_sku,
+                "custom_label": template.custom_label,
+                "chosen_rank": template.chosen_rank,
+                "was_correction": template.was_correction,
+            },
+        )
+
+    for template in CustomerPreference.objects.filter(demo_session_id=""):
+        CustomerPreference.objects.get_or_create(
+            demo_session_id=session_id,
+            customer_key=template.customer_key,
+            normalized_request=template.normalized_request,
+            sku=template.sku,
+            defaults={
+                "times_chosen": template.times_chosen,
+                "times_rejected": template.times_rejected,
+            },
+        )
 
 
 @transaction.atomic
@@ -341,6 +392,12 @@ def reset_demo_data(session_id: str) -> None:
     thresholds to the defaults, and re-clones fresh sample copies.
     """
     OrderRecord.objects.filter(demo_session_id=session_id).delete()
+    # Including everything this session taught the matcher — a "start over"
+    # that left the learned preferences behind would mean the reset demo
+    # behaves differently from a genuinely fresh one, which is exactly the
+    # kind of thing that makes a demo lie.
+    CustomerCorrection.objects.filter(demo_session_id=session_id).delete()
+    CustomerPreference.objects.filter(demo_session_id=session_id).delete()
     SetupConfiguration.objects.update_or_create(
         demo_session_id=session_id, defaults=DEFAULT_SETUP_CONFIGURATION
     )

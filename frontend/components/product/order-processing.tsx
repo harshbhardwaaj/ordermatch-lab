@@ -387,7 +387,7 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
                   const rowClear = isLineClear(line.status);
                   const originallyClear = rowClear && !line.resolvedByDecision;
                   const isDeferred = deferredLineIds.has(line.id);
-                  const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 3);
+                  const candidates = originallyClear ? [] : getLineCandidates(order, line.id).slice(0, 10);
                   const isLastRendered = index === revealedLines - 1;
                   const isPending = pendingLineId === line.id;
 

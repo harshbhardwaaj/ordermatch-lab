@@ -8,7 +8,8 @@ from django.utils import timezone as django_timezone
 
 from catalogs.models import CatalogItem
 from evals.models import EvalFailureCase, EvalMetric, EvalRun
-from matching.models import MatchCandidate
+from matching.memory import customer_key_for, normalize_request_text
+from matching.models import CustomerCorrection, CustomerPreference, MatchCandidate
 from orders.models import OrderException, OrderLineItem, OrderRecord, ReadinessCheck
 
 SEED_DIR = Path(__file__).resolve().parent.parent.parent.parent / "seed_data"
@@ -39,8 +40,76 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self._seed_catalog_items()
         self._seed_orders()
+        self._seed_customer_memory()
         self._seed_eval_runs()
         self.stdout.write(self.style.SUCCESS("Seed data loaded."))
+
+    def _seed_customer_memory(self):
+        """Two customers arrive with a little history already, so the memory
+        is not an empty screen on a first visit — and, more usefully, so the
+        two of them visibly disagree.
+
+        Both buy an M8x40 hex bolt and both write it vaguely. Vogt corrects
+        us toward A4 (marine grade, they build for coastal sites); LakePort
+        corrects us toward plain zinc (they are price-led). Same words, same
+        catalog, opposite right answer. That is the entire argument for
+        keeping this memory per customer rather than global, and it is worth
+        being able to show rather than assert.
+
+        Seeded as templates (demo_session_id=""), cloned per visitor by
+        orders.services.ensure_session_samples, exactly like the orders are.
+        """
+        templates = [
+            {
+                "customer_name": "Vogt Hydraulik GmbH",
+                "request_text": "hex bolt m8x40 inox qty 500",
+                "suggested_sku": "OM-FAS-HB-M8X40-A2-D933",
+                "chosen_sku": "OM-FAS-HB-M8X40-A4-D933",
+                "chosen_rank": 2,
+            },
+            {
+                "customer_name": "LakePort Maintenance Supply LLC",
+                "request_text": "hex bolt m8x40 500 pcs",
+                "suggested_sku": "OM-FAS-HB-M8X40-A2-D933",
+                "chosen_sku": "OM-FAS-HB-M8X40-ZN-D933",
+                "chosen_rank": 3,
+            },
+        ]
+
+        for index, template in enumerate(templates, start=1):
+            key = customer_key_for(template["customer_name"])
+            normalized = normalize_request_text(template["request_text"])
+
+            CustomerCorrection.objects.update_or_create(
+                id=f"corr-seed-{index}",
+                defaults={
+                    "demo_session_id": "",
+                    "customer_key": key,
+                    "customer_name": template["customer_name"],
+                    "request_text": template["request_text"],
+                    "normalized_request": normalized,
+                    "suggested_sku": template["suggested_sku"],
+                    "chosen_sku": template["chosen_sku"],
+                    "chosen_rank": template["chosen_rank"],
+                    "was_correction": True,
+                },
+            )
+            CustomerPreference.objects.update_or_create(
+                demo_session_id="",
+                customer_key=key,
+                normalized_request=normalized,
+                sku=template["chosen_sku"],
+                defaults={"times_chosen": 1, "times_rejected": 0},
+            )
+            CustomerPreference.objects.update_or_create(
+                demo_session_id="",
+                customer_key=key,
+                normalized_request=normalized,
+                sku=template["suggested_sku"],
+                defaults={"times_chosen": 0, "times_rejected": 1},
+            )
+
+        self.stdout.write(f"  customer memory templates: {len(templates)}")
 
     def _seed_catalog_items(self):
         items = json.loads((SEED_DIR / "catalog_items.json").read_text())

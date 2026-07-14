@@ -4,6 +4,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from matching.memory import record_correction
 from matching.models import MatchCandidate, MatchDecision
 
 from .extraction import ExtractionError
@@ -162,6 +163,17 @@ class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):
 
         line_item.status = "matched"
         line_item.save()
+
+        # The learning loop's only write path (matching.memory). Logged for
+        # every decision, not just the ones that overruled the AI: a confirmed
+        # top pick is the evidence that it was right, and a memory fed only on
+        # its own failures learns a badly skewed picture.
+        record_correction(
+            session_id=request.demo_session_id,
+            line_item=line_item,
+            chosen_candidate=candidate,
+            custom_label=custom_label,
+        )
         return Response(OrderLineItemSerializer(line_item).data)
 
     @action(detail=True, methods=["post"])

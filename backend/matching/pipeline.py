@@ -29,7 +29,14 @@ MODEL = "gpt-5.4-mini"
 CONFIDENT_SCORE = 92
 CONFIDENT_MARGIN = 15
 
-MAX_CANDIDATES = 3
+# A reviewer correcting a bad match needs the *right* SKU to be somewhere in
+# the list, and on a catalog with many near-identical variants (same bolt in
+# three materials, superseded predecessors still listed) the right one is
+# routinely below rank 3. The picker only shows the top few up front and puts
+# the rest behind "show more", so a longer shortlist costs the reviewer
+# nothing and is what makes a correction possible at all rather than forcing
+# free-text.
+MAX_CANDIDATES = 10
 
 _SIZE_ATTRIBUTE_NAMES = {"thread", "length", "diameter", "size", "width", "height"}
 
@@ -49,6 +56,9 @@ class ScoredCandidate:
     proof_items: list = field(default_factory=list)
     missing_evidence: list = field(default_factory=list)
     matched_via: str = "deterministic"
+    # Set by matching.memory.apply_memory when this customer's own past
+    # corrections moved this candidate. Empty when memory said nothing.
+    learned_signal: dict = field(default_factory=dict)
 
 
 def _norm(value: str | None) -> str:
@@ -239,7 +249,7 @@ _BATCH_SEMANTIC_SYSTEM_PROMPT = (
     "catalog, one line item at a time. Evaluate each requested line item "
     "completely independently: one line's likely match must never "
     "influence another line's candidates, even if they look similar. For "
-    "each line item, identified by its index, return up to 3 candidate "
+    "each line item, identified by its index, return up to 10 candidate "
     "SKUs ranked by how well they match, most likely first. confidence is "
     "0-100: your own honest estimate of match quality, not a rounded "
     "guess. An honest estimate is calibrated to what the requested line "
@@ -255,12 +265,22 @@ _BATCH_SEMANTIC_SYSTEM_PROMPT = (
     "reasons only on real similarities or differences between the "
     "requested item and that specific catalog entry, not generic "
     "statements. Return exactly one result entry per line item index "
-    "given, even when its candidates list is empty."
+    "given, even when its candidates list is empty. If the payload "
+    "includes past_corrections_by_this_customer, treat it as this "
+    "specific customer's own resolved history: where a requested line "
+    "item closely resembles one of those past requests, prefer the SKU "
+    "the human corrected it to and rank the SKU they overruled below it. "
+    "Their correction is better evidence about what they meant than the "
+    "catalog text is. Do not apply it where the line item genuinely "
+    "differs — a past correction about a bolt says nothing about a "
+    "bearing."
 )
 
 
 def _semantic_match_batch(
-    indexed_lines: list[tuple[int, dict]], catalog_items: list[CatalogItem]
+    indexed_lines: list[tuple[int, dict]],
+    catalog_items: list[CatalogItem],
+    memory_examples: list[dict] | None = None,
 ) -> dict[int, list[dict]]:
     if not settings.OPENAI_API_KEY or not indexed_lines:
         return {}
@@ -270,6 +290,12 @@ def _semantic_match_batch(
         "requested_line_items": [{"index": index, **extracted} for index, extracted in indexed_lines],
         "catalog": [_catalog_summary_for_llm(c) for c in catalog_items],
     }
+    # Retrieved few-shot examples, not a fine-tune: this customer's own past
+    # corrections go into the prompt so the model stops *proposing* the SKU
+    # they keep overruling. Re-ranking alone would only fix the reviewer's
+    # screen; this fixes the suggestion.
+    if memory_examples:
+        payload["past_corrections_by_this_customer"] = memory_examples
 
     try:
         response = client.chat.completions.create(
@@ -330,7 +356,9 @@ def _resolve_semantic_candidates(
 
 
 def match_order_lines(
-    line_items: list[dict], catalog_items: list[CatalogItem]
+    line_items: list[dict],
+    catalog_items: list[CatalogItem],
+    memory=None,
 ) -> list[list[ScoredCandidate]]:
     """extracted line items from extraction.extract_order's line_items
     list, matched in at most one combined OpenAI call for the whole order:
@@ -338,10 +366,19 @@ def match_order_lines(
     line left ambiguous afterward is sent together in a single semantic-
     match request, rather than one request per ambiguous line.
 
+    `memory` is an optional matching.memory.CustomerMemory. It is used
+    twice, on purpose: its past corrections go into the LLM prompt as
+    retrieved few-shot examples (so the model proposes better), and they
+    re-rank the finished candidate list (so the reviewer sees better even
+    when the LLM ignored them, or was never called at all because the
+    deterministic pass was confident).
+
     Returns one candidate list per input line item, in the same order,
     each up to MAX_CANDIDATES best-first, or empty if nothing plausible
     was found at all for that line.
     """
+    from .memory import apply_memory, memory_examples_for_prompt
+
     deterministic_per_line = [_deterministic_candidates(line, catalog_items) for line in line_items]
     needs_escalation = [
         (index, line_items[index])
@@ -352,21 +389,28 @@ def match_order_lines(
     batch_results: dict[int, list[dict]] = {}
     if needs_escalation:
         try:
-            batch_results = _semantic_match_batch(needs_escalation, catalog_items)
+            batch_results = _semantic_match_batch(
+                needs_escalation,
+                catalog_items,
+                memory_examples_for_prompt(memory) if memory else None,
+            )
         except MatchingError:
             batch_results = {}
 
     results = []
     for index, deterministic in enumerate(deterministic_per_line):
         if _is_confident(deterministic):
-            results.append([deterministic[0]])
-            continue
+            candidates = [deterministic[0]]
+        else:
+            scored = _resolve_semantic_candidates(batch_results.get(index, []), catalog_items)
+            # The LLM found nothing better than the deterministic pass (or the
+            # batched call failed outright): fall back to whatever
+            # deterministic signal exists, even if weak, so the reviewer still
+            # has candidates to pick from instead of an empty picker.
+            candidates = scored if scored else deterministic[:MAX_CANDIDATES]
 
-        scored = _resolve_semantic_candidates(batch_results.get(index, []), catalog_items)
-        # The LLM found nothing better than the deterministic pass (or the
-        # batched call failed outright): fall back to whatever
-        # deterministic signal exists, even if weak, so the reviewer still
-        # has candidates to pick from instead of an empty picker.
-        results.append(scored if scored else deterministic[:MAX_CANDIDATES])
+        if memory:
+            candidates = apply_memory(memory, line_items[index].get("original_text") or "", candidates)
+        results.append(candidates)
 
     return results

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import MatchCandidate, MatchDecision
+from .models import CustomerCorrection, CustomerPreference, MatchCandidate, MatchDecision
 
 
 class MatchCandidateSerializer(serializers.ModelSerializer):
@@ -22,6 +22,9 @@ class MatchCandidateSerializer(serializers.ModelSerializer):
             "missing_evidence",
             "conflicting_evidence",
             "requires_human_review",
+            # Unlike score/confidence_band this one IS sent to the frontend
+            # on purpose — see the field's docstring on MatchCandidate.
+            "learned_signal",
         ]
 
 
@@ -35,3 +38,40 @@ class MatchDecisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MatchDecision
         fields = "__all__"
+
+
+class CustomerCorrectionSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source="order.order_number", default="", read_only=True)
+
+    class Meta:
+        model = CustomerCorrection
+        fields = [
+            "id",
+            "customer_key",
+            "customer_name",
+            "request_text",
+            "normalized_request",
+            "suggested_sku",
+            "chosen_sku",
+            "custom_label",
+            "chosen_rank",
+            "was_correction",
+            "order_number",
+            "created_at",
+        ]
+
+
+class CustomerPreferenceSerializer(serializers.ModelSerializer):
+    pinned = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = CustomerPreference
+        fields = [
+            "customer_key",
+            "normalized_request",
+            "sku",
+            "times_chosen",
+            "times_rejected",
+            "pinned",
+            "last_seen_at",
+        ]
