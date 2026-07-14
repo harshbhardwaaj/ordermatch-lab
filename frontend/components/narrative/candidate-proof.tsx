@@ -55,7 +55,7 @@ const CARDS: ProofCard[] = [
       "Claude is used only for the qualitative sections.",
     ],
     mapping:
-      "Relevant here because Comena needs interns who can connect UI, business logic, and a real deployment, and who know which parts of a system a language model should and should not touch.",
+      "Relevant here because Building Radar needs builders who can connect UI, business logic, and a real deployment, and who know which parts of a system a language model should and should not touch.",
     links: [
       { state: "live", label: "View live tool", href: "https://ai-investment-analyst-harsh.vercel.app", icon: "external" },
       { state: "live", label: "View code", href: "https://github.com/harshbhardwaaj/ai-investment-analyst", icon: "github" },
@@ -206,7 +206,7 @@ function TimelineItem({ card, index }: { card: ProofCard; index: number }) {
           ))}
         </ul>
         <span className="mt-4 inline-flex w-fit items-center rounded-full border border-[var(--om-accent-soft)] bg-[var(--om-accent-soft)] px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--om-accent)]">
-          Comena-relevant skill: {card.capability}
+          Relevant skill: {card.capability}
         </span>
         <p className="mt-3 border-l-2 border-[var(--om-accent-soft)] pl-3 text-sm leading-6 text-[var(--om-muted)]">
           {card.mapping}
@@ -236,7 +236,7 @@ export function CandidateProof() {
 
         <div className="mt-6 rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)] p-4 text-sm leading-6 text-[var(--om-muted)] sm:p-5">
           You already saw the strongest proof. This whole prototype, extraction, matching,
-          confidence, evals, and setup, was built specifically for Comena&apos;s problem, not adapted
+          confidence, evals, and the learning loop, was built for the problem you handed me, not adapted
           from a template.{" "}
           <TransitionLink href="/prototype" className="font-semibold text-[var(--om-accent)] hover:text-[var(--om-accent-hover)]">
             Revisit the prototype

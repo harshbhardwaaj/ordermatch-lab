@@ -15,27 +15,32 @@ export function PrototypeOrientation() {
       >
         <section className="mx-auto flex w-full max-w-4xl flex-col items-start gap-7 text-left">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[var(--om-accent)] sm:text-sm">
-            The problem, in plain words
+            The problem you gave me
           </p>
 
           <div className="max-w-3xl space-y-4 pt-2">
             <h1 className="text-2xl font-extrabold leading-tight tracking-normal text-[var(--om-text)] sm:text-3xl lg:text-[2.15rem]">
-              Every day, someone opens an email that says
+              A customer writes
             </h1>
 
             <p className="text-[1.4rem] font-extrabold leading-tight tracking-normal text-[var(--om-accent)] sm:text-[1.75rem] lg:text-[2rem]">
-              send 50 of the M8 bearings we ordered last time, same as PO 4471,
-              deliver to the Hamburg site
+              500x hex bolt M8x40, standard
             </p>
 
             <p className="text-2xl font-extrabold leading-tight tracking-normal text-[var(--om-text)] sm:text-3xl lg:text-[2.15rem]">
-              and has to figure out what that actually means.
+              and your catalog has that bolt in three materials, at three prices.
             </p>
           </div>
 
           <p className="max-w-2xl text-base leading-7 text-[var(--om-muted)] sm:text-lg">
-            Which exact bearing? Which Hamburg address? Someone digs through past
-            orders, guesses, and types it into the system by hand.
+            Ten thousand items. The same solution sold at several grades. Superseded parts
+            still sitting next to the ones that replaced them. No matcher gets this right
+            first time — and it doesn&apos;t have to, because a human is already sitting
+            there fixing it.
+          </p>
+
+          <p className="max-w-2xl text-base font-semibold leading-7 text-[var(--om-text)] sm:text-lg">
+            The only question that matters is whether it remembers the fix.
           </p>
 
           <Button
@@ -44,7 +49,7 @@ export function PrototypeOrientation() {
             className="mt-7 w-full bg-[var(--om-accent)] px-6 text-sm text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)] sm:w-auto"
           >
             <TransitionLink href="/prototype/workflow">
-              See how I&apos;d solve this for Comena
+              See how I solved it
               <ArrowRight aria-hidden="true" />
             </TransitionLink>
           </Button>

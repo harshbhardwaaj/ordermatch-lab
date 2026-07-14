@@ -1,8 +1,16 @@
 # OrderMatch Lab
 
-A candidate pitch wrapped around a working product prototype, built for [Comena](https://comena.ai), a YC company doing AI-assisted B2B order automation.
+A working product prototype, built by Harsh Bhardwaj in response to [Building Radar](https://buildingradar.com)'s case challenge.
 
 The prototype reads a messy purchase order, matches line items to a catalog, shows confidence, routes uncertain lines to a person, and sends clean orders to an ERP. Around it is a guided narrative explaining the problem, the engineering decisions behind it, and why I built it this way.
+
+## The case
+
+> Product matching is hard because the catalog makes it hard: **10,000+ items**, the **same solution sold at several quality tiers** (the same screw in different materials, rising durability, rising price), and **superseded products still listed beside their replacements**. The user is willing to teach the system. Find a way for them to correct the AI's suggested match, so future matches take those corrections into account and get steadily better.
+
+The answer here is not a cleverer one-shot matcher. It is a matcher that gets corrected once and stops repeating the mistake **for that customer**.
+
+Every reviewer decision is logged against the customer whose order it was, aggregated into what the matcher reads back, and used twice: as retrieved few-shot examples in the semantic-match prompt (so the model *proposes* better) and as a re-rank of the finished candidate list (so the reviewer *sees* better, even when the LLM ignored them or was never called). Memory is per customer on purpose — "M8 bolt, standard" means a different grade to different buyers. See `backend/matching/memory.py` and `/prototype/customers`.
 
 ## Try it
 
@@ -67,7 +75,7 @@ The order review and setup flows call a real backend. See
 then point the frontend at it with `frontend/.env.local`:
 
 ```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8010
 ```
 
 The rest of the app (`/`, `/thesis`, `/proof`, `/contact`, the workflow

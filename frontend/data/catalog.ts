@@ -3,7 +3,7 @@ import type { CatalogItem } from "@/types/catalog";
 export const catalogDataNotice = {
   label: "Grounded synthetic sample catalog",
   description:
-    "Synthetic industrial catalog rows based on public procurement structures and public product naming patterns. No real customer, Comena, private PO, or private catalog data is included.",
+    "Synthetic industrial catalog rows based on public procurement structures and public product naming patterns. No real customer, Building Radar, private PO, or private catalog data is included.",
   groundingSources: [
     "docs/data-research/grounding-notes.md",
     "docs/data-research/source-map.md",

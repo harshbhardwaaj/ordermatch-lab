@@ -23,23 +23,27 @@
   --input: 213 41% 88%;
   --ring: 221 83% 53%;
   --radius: 0.5rem;
-  --om-bg: #f3f8ff;
-  --om-bg-soft: #eaf4ff;
+  /* Building Radar's own palette, sampled from buildingradar.com: the red
+   * #F6173B accent, #C01030 for the pressed/hover state, and the #171C32
+   * ink navy that carries most of their type. The greys are theirs too
+   * (#EEF0F7 / #F6F7FA surfaces, #4A4F6A / #8A90AE text). */
+  --om-bg: #f6f7fa;
+  --om-bg-soft: #eef0f7;
   --om-surface: #ffffff;
-  --om-surface-2: #f7fbff;
-  --om-surface-3: #eaf2ff;
-  --om-border: #d9e8f7;
-  --om-border-strong: #b8d4f2;
-  --om-text: #0f172a;
-  --om-muted: #64748b;
-  --om-subtle: #94a3b8;
-  --om-accent: #2563eb;
-  --om-accent-hover: #1d4ed8;
-  --om-accent-soft: #dbeafe;
-  --om-accent-softer: #eff6ff;
+  --om-surface-2: #f6f7fa;
+  --om-surface-3: #eef0f7;
+  --om-border: #e1e3ec;
+  --om-border-strong: #c9cfd9;
+  --om-text: #171c32;
+  --om-muted: #4a4f6a;
+  --om-subtle: #8a90ae;
+  --om-accent: #f6173b;
+  --om-accent-hover: #c01030;
+  --om-accent-soft: #fee8ec;
+  --om-accent-softer: #fff5f7;
   --om-accent-text: #ffffff;
   --om-success: #16a34a;
-  --om-accent-rgb: 37, 99, 235;
+  --om-accent-rgb: 246, 23, 59;
   --om-success-rgb: 22, 163, 74;
 }
 
@@ -61,23 +65,26 @@
   --border: 218 28% 18%;
   --input: 218 28% 18%;
   --ring: 213 94% 68%;
-  --om-bg: #090d14;
-  --om-bg-soft: #0f1723;
-  --om-surface: #171c24;
-  --om-surface-2: #111827;
-  --om-surface-3: #1d2838;
-  --om-border: #263244;
-  --om-border-strong: #33445d;
-  --om-text: #f8fafc;
-  --om-muted: #a8b3c7;
-  --om-subtle: #6f7f95;
-  --om-accent: #60a5fa;
-  --om-accent-hover: #3b82f6;
-  --om-accent-soft: #172f4f;
-  --om-accent-softer: #0f223b;
-  --om-accent-text: #06111f;
+  /* Dark mode built up from their #171C32 ink rather than a generic slate,
+   * so the two themes read as the same brand. The red lifts to #FF3355 to
+   * stay legible on dark without going pink. */
+  --om-bg: #0b0e1a;
+  --om-bg-soft: #111527;
+  --om-surface: #171c32;
+  --om-surface-2: #141830;
+  --om-surface-3: #1f2542;
+  --om-border: #2a3050;
+  --om-border-strong: #3d4468;
+  --om-text: #f6f7fa;
+  --om-muted: #a9aec7;
+  --om-subtle: #8a90ae;
+  --om-accent: #ff3355;
+  --om-accent-hover: #f6173b;
+  --om-accent-soft: #3d1520;
+  --om-accent-softer: #2a1019;
+  --om-accent-text: #ffffff;
   --om-success: #35d07f;
-  --om-accent-rgb: 96, 165, 250;
+  --om-accent-rgb: 255, 51, 85;
   --om-success-rgb: 53, 208, 127;
 }
 

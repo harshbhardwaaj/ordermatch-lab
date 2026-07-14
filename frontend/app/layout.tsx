@@ -21,9 +21,9 @@ const shellStateScript = `
 `;
 
 export const metadata: Metadata = {
-  title: "OrderMatch Lab",
+  title: "OrderMatch Lab — a prototype for Building Radar, by Harsh Bhardwaj",
   description:
-    "A research-informed order operations prototype for extraction, SKU matching, review, ERP readiness, and evals.",
+    "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
 };
 
 export const viewport: Viewport = {

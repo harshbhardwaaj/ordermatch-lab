@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
     label: "What I built",
     children: [
       { href: "/prototype", label: "Prototype" },
+      { href: "/prototype/customers", label: "What it learned" },
       { href: "/prototype/orders", label: "Order log" },
       { href: "/prototype/setup", label: "Setup" },
     ],
@@ -167,7 +168,7 @@ export function AppShell({
                   OrderMatch Lab
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
-                  Comena prototype
+                  Building Radar prototype
                 </span>
               </span>
             </TransitionLink>

@@ -34,7 +34,7 @@ export default function ContactPage() {
           Get in touch
         </p>
         <h1 className="mt-4 text-3xl font-extrabold leading-tight text-[var(--om-text)] sm:text-4xl">
-          Let&apos;s talk about Comena.
+          Let&apos;s talk about Building Radar.
         </h1>
         <p className="mt-3 text-base leading-7 text-[var(--om-muted)]">
           Book a call, email, or call directly, whichever is easiest.
