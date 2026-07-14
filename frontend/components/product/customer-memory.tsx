@@ -466,7 +466,7 @@ export function CustomerMemoryView() {
                 size="lg"
                 className="shrink-0 bg-[var(--om-accent)] px-6 text-sm text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
               >
-                <TransitionLink href="/prototype/workflow">
+                <TransitionLink href="/thesis">
                   See how it works
                   <ArrowRight aria-hidden="true" />
                 </TransitionLink>
