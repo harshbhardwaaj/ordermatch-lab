@@ -61,7 +61,11 @@ function ContextFileCard({
   const [draft, setDraft] = useState("");
 
   const file = memory.contextFile;
-  const fresh = file ? file.builtFromCorrections >= memory.totalDecisions : false;
+  // The brief is only rebuilt when a reviewer actually overrules the AI. A
+  // confirmation is logged but teaches the brief nothing, so comparing against
+  // *every* decision made the file look stale the moment you accepted a correct
+  // top pick, and nagged you to rebuild something that was already current.
+  const fresh = file ? file.builtFromCorrections >= memory.corrections : false;
 
   return (
     <section className="overflow-hidden rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]">
@@ -162,12 +166,12 @@ function ContextFileCard({
             <strong className="font-semibold text-[var(--om-text)]">
               {file.builtFromCorrections}
             </strong>{" "}
-            decision{file.builtFromCorrections === 1 ? "" : "s"}.
+            correction{file.builtFromCorrections === 1 ? "" : "s"}.
           </span>
           {!fresh ? (
             <span className="flex items-center gap-1 text-amber-700">
               <AlertTriangle className="size-3" />
-              New decisions since. Rebuild to fold them in.
+              New corrections since. Rebuild to fold them in.
             </span>
           ) : null}
           <span className="ml-auto">The matcher reads this on every order.</span>
@@ -180,7 +184,18 @@ function ContextFileCard({
 /* The deterministic half: exact wording to exact SKU. -------------------- */
 
 function LearnedRules({ memory }: { memory: CustomerMemory }) {
-  if (memory.learnedRules.length === 0) {
+  // Only what the reviewer actually chose. Every SKU the AI ranked above their
+  // pick is also recorded, as a rejection, so the matcher stops re-suggesting
+  // it — real signal, but internal. Rendering each one as its own card meant
+  // correcting a rank-8 match spat out seven near-identical "chosen 0x /
+  // rejected 1x" boxes and buried the one rule that matters. They are a count
+  // now, not a wall.
+  const chosen = memory.learnedRules.filter((rule) => rule.timesChosen > 0);
+  const demoted = memory.learnedRules.filter(
+    (rule) => rule.timesChosen === 0 && rule.timesRejected > 0,
+  );
+
+  if (chosen.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-[var(--om-border-strong)] p-4 text-xs text-[var(--om-muted)]">
         Nothing pinned yet.
@@ -190,7 +205,7 @@ function LearnedRules({ memory }: { memory: CustomerMemory }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      {memory.learnedRules.map((rule) => (
+      {chosen.map((rule) => (
         <div
           key={`${rule.normalizedRequest}-${rule.sku}`}
           className={cn(
@@ -210,10 +225,18 @@ function LearnedRules({ memory }: { memory: CustomerMemory }) {
             </span>
           </p>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-[var(--om-subtle)]">
-            {rule.pinned ? "pinned" : `chosen ${rule.timesChosen}x / rejected ${rule.timesRejected}x`}
+            {rule.pinned ? "pinned" : `chosen ${rule.timesChosen}x`}
           </p>
         </div>
       ))}
+
+      {demoted.length > 0 ? (
+        <p className="px-1 text-[11px] leading-5 text-[var(--om-subtle)]">
+          {demoted.length} other SKU{demoted.length === 1 ? " was" : "s were"} demoted for these
+          requests, because the AI ranked {demoted.length === 1 ? "it" : "them"} above what the
+          reviewer picked.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -227,6 +250,8 @@ function History({
   onForget: (id: string) => void;
   forgettingId: string | null;
 }) {
+  const [showAll, setShowAll] = useState(false);
+
   if (memory.history.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-[var(--om-border-strong)] p-4 text-xs text-[var(--om-muted)]">
@@ -235,9 +260,14 @@ function History({
     );
   }
 
+  // The log grows forever, which is the point of it, but an unbounded list of
+  // cards is not a UI. Show the recent ones; the rest are one click away.
+  const visible = showAll ? memory.history : memory.history.slice(0, 6);
+  const hidden = memory.history.length - visible.length;
+
   return (
     <div className="flex flex-col gap-1.5">
-      {memory.history.map((entry) => (
+      {visible.map((entry) => (
         <div
           key={entry.id}
           className="group rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-3"
@@ -280,6 +310,16 @@ function History({
           </p>
         </div>
       ))}
+
+      {hidden > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="rounded-lg border border-dashed border-[var(--om-border-strong)] px-3 py-2 text-xs font-medium text-[var(--om-muted)] transition-colors hover:border-[var(--om-accent)] hover:text-[var(--om-text)]"
+        >
+          Show {hidden} older decision{hidden === 1 ? "" : "s"}
+        </button>
+      ) : null}
     </div>
   );
 }

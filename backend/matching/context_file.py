@@ -150,7 +150,11 @@ def build_context_file(session_id: str, customer_key: str, customer_name: str) -
         defaults={
             "customer_name": customer_name,
             "content": content,
-            "built_from_corrections": len(corrections),
+            # Corrections, not decisions. The brief is only ever rebuilt when a
+            # reviewer overrules the AI, so counting confirmations here made the
+            # UI think the file was out of date the moment somebody accepted a
+            # top pick that was already right.
+            "built_from_corrections": sum(1 for c in corrections if c.was_correction),
             "generated_by": generated_by,
             "edited_by_human": False,
         },
