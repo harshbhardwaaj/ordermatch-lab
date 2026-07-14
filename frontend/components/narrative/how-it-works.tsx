@@ -217,12 +217,14 @@ function ContextVisual() {
         <span className="font-mono text-[10px] text-[var(--om-subtle)]">~150 tokens</span>
       </header>
 
-      <div className="flex flex-col gap-3 p-4">
+      {/* Side by side, because this card now spans the full width of the slide
+          rather than sitting in a narrow right-hand column. */}
+      <div className="grid gap-5 p-5 sm:grid-cols-2">
         <div>
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--om-accent)]">
             What they mean
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--om-muted)]">
+          <p className="mt-1.5 text-sm leading-6 text-[var(--om-muted)]">
             &ldquo;inox&rdquo; resolves to{" "}
             <strong className="font-semibold text-[var(--om-text)]">A4 stainless</strong>, not A2.
           </p>
@@ -231,7 +233,7 @@ function ContextVisual() {
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--om-accent)]">
             Never
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--om-muted)]">
+          <p className="mt-1.5 text-sm leading-6 text-[var(--om-muted)]">
             Never default their inox fasteners to A2. The reviewer has already overruled that once.
           </p>
         </div>
@@ -272,7 +274,7 @@ const SLIDES: Slide[] = [
   {
     id: "blocking",
     icon: Filter,
-    eyebrow: "Step 1",
+    eyebrow: "Blocking",
     title: "Narrow 10,202 down to 40, with no model at all.",
     lead: [
       "An inverted index over the catalog. The customer's words are scored against it, with rare words counting for most: \"m8x40\" appears in a handful of items and tells you almost everything, \"bolt\" appears in thousands and tells you nothing.",
@@ -285,7 +287,7 @@ const SLIDES: Slide[] = [
   {
     id: "rules",
     icon: Ruler,
-    eyebrow: "Step 2",
+    eyebrow: "Deterministic rules",
     title: "Let plain code answer whatever it can.",
     lead: [
       "Part numbers, SKUs, threads, materials and standards get compared directly against those forty rows. If one candidate wins clearly, the line is finished and nothing else runs.",
@@ -298,7 +300,7 @@ const SLIDES: Slide[] = [
   {
     id: "model",
     icon: Brain,
-    eyebrow: "Step 3",
+    eyebrow: "The model",
     title: "The model only sees what is still ambiguous.",
     lead: [
       "Every unresolved line in the order goes into one batched call, not one call per line. A twenty-line order should not mean twenty sequential round trips.",
@@ -310,21 +312,21 @@ const SLIDES: Slide[] = [
   {
     id: "human",
     icon: UserRound,
-    eyebrow: "Step 4",
+    eyebrow: "The human",
     title: "A person decides the ones that are genuinely unclear.",
     lead: [
       "\"500x hex bolt M8x40, standard\" legitimately matches fifteen SKUs in this catalog, from 0.06 to 0.27 EUR. No matcher can resolve that, however clever, because the information is not in the sentence.",
       "So the job stops being guess better and starts being ask well. Show the shortlist. Show the price, because in a grade ladder the price is the decision. Show the evidence behind each option. Make the correction one click.",
     ],
-    note: "This is the only genuinely expensive step in the system, and the only one that produces something new.",
+    note: "And their answer is not spent once. It is the only step that produces something new, so it is the only step worth remembering: what they pick here is what makes the AI pick better next time, for this customer, without anyone being asked twice.",
     visual: LadderVisual,
     layout: "split",
   },
   {
     id: "context",
     icon: RotateCcw,
-    eyebrow: "Step 5",
-    title: "Context engineering: the answer is written down, not re-bought.",
+    eyebrow: "Context engineering",
+    title: "The answer is written down, not re-bought.",
     lead: [
       "The reviewer was always going to fix that bad match. The only question worth asking is whether anything was listening.",
       "Two things get kept. The exact wording is pinned to the exact SKU, so an identical request is never re-litigated and costs nothing forever. And the reason behind it is distilled by an agent into a short markdown brief, because a reason generalizes to line items the counters have never seen.",
@@ -332,7 +334,7 @@ const SLIDES: Slide[] = [
     ],
     note: "A reviewer can read the file, and edit it. A memory you cannot inspect is one people stop trusting, and a memory you cannot correct is one they route around.",
     visual: ContextVisual,
-    layout: "split",
+    layout: "stacked",
   },
 ];
 
@@ -389,10 +391,19 @@ export function HowItWorks() {
           </div>
         </div>
 
+        {/* A stacked slide gives the prose the full width and drops the visual
+            underneath it. Squeezing a long argument into a half-width column
+            beside a small card wasted most of the screen and made the text
+            harder to read than the diagram it was explaining. */}
         <div className="flex flex-1 items-center py-6">
           <section
             key={slide.id}
-            className="grid w-full min-w-0 items-center gap-8 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none lg:grid-cols-2 lg:gap-14"
+            className={cn(
+              "w-full min-w-0 [animation:reveal-item_400ms_ease-out] motion-reduce:animate-none",
+              slide.layout === "stacked"
+                ? "flex flex-col gap-8"
+                : "grid items-center gap-8 lg:grid-cols-2 lg:gap-14",
+            )}
           >
             <div className="flex min-w-0 flex-col">
               <p className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[var(--om-accent)]">
@@ -402,14 +413,26 @@ export function HowItWorks() {
               <h1 className="mt-4 text-[clamp(1.5rem,2.6vw,2.3rem)] font-extrabold leading-[1.16] text-[var(--om-text)]">
                 {slide.title}
               </h1>
-              {slide.lead.map((paragraph) => (
-                <p
-                  key={paragraph.slice(0, 24)}
-                  className="mt-4 text-[clamp(0.95rem,1.1vw,1.1rem)] leading-7 text-[var(--om-muted)]"
-                >
-                  {paragraph}
-                </p>
-              ))}
+              {/* CSS columns rather than a grid: a grid puts one paragraph per
+                  cell, so a short first paragraph leaves a hole beside it.
+                  Columns flow and balance the text, which is what you actually
+                  want when prose runs the full width. */}
+              <div
+                className={
+                  slide.layout === "stacked"
+                    ? "mt-2 lg:columns-2 lg:gap-12 [&>p]:break-inside-avoid"
+                    : undefined
+                }
+              >
+                {slide.lead.map((paragraph) => (
+                  <p
+                    key={paragraph.slice(0, 24)}
+                    className="mt-4 text-[clamp(0.95rem,1.1vw,1.1rem)] leading-7 text-[var(--om-muted)]"
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
               {slide.note ? (
                 <p className="mt-5 border-l-2 border-[var(--om-accent)] pl-4 text-sm leading-6 text-[var(--om-muted)]">
                   {slide.note}

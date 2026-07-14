@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { BrandMark, BrandWordmark } from "@/components/brand-mark";
+import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
 import { icons } from "@/lib/icons";
@@ -35,7 +35,9 @@ const navItems: NavItem[] = [
     icon: icons.orderReview,
     label: "What I built",
     children: [
-      { href: "/prototype", label: "Prototype" },
+      { href: "/prototype", label: "The problem" },
+      { href: "/prototype/answer", label: "The answer" },
+      { href: "/prototype/start", label: "Try an order" },
       { href: "/prototype/customers", label: "What it learned" },
       { href: "/prototype/orders", label: "Order log" },
       { href: "/prototype/setup", label: "Setup" },
@@ -155,24 +157,28 @@ export function AppShell({
               aria-label="OrderMatch Lab home"
               className="flex h-12 items-center gap-4 rounded-full text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
             >
-              {/* The wordmark already contains the glyph, so showing BrandMark
-                  beside it drew the same mark twice. Collapsed rail gets the
-                  glyph alone (a wordmark is illegible at 48px); expanded gets
-                  the wordmark alone, with Harsh's byline under it so authorship
-                  travels with the chrome and the app is never mistaken for a
-                  Building Radar property. */}
-              {isNavOpen ? (
-                <span className="flex min-w-0 flex-col gap-1">
-                  <BrandWordmark className="h-[18px] w-auto" />
-                  <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
-                    Prototype by Harsh
-                  </span>
+              {/* One mark, the same at both widths: Building Radar's glyph. The
+                  wordmark read as cramped next to it and already contains the
+                  glyph anyway, so it was drawing the same shape twice. The
+                  byline appears beside it when there is room, so authorship
+                  still travels with the chrome and the app is never mistaken
+                  for a Building Radar property. */}
+              <span className="flex size-12 shrink-0 items-center justify-center">
+                <BrandMark className="size-9" />
+              </span>
+              <span
+                className={cn(
+                  "nav-rail-label flex min-w-0 flex-col whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
+                  isNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
+                )}
+              >
+                <span className="text-sm font-bold leading-5 text-[var(--om-text)]">
+                  Building Radar
                 </span>
-              ) : (
-                <span className="flex size-12 shrink-0 items-center justify-center">
-                  <BrandMark className="size-8" />
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
+                  Prototype by Harsh
                 </span>
-              )}
+              </span>
             </TransitionLink>
 
             <nav
@@ -309,7 +315,7 @@ export function AppShell({
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl text-sm font-semibold marker:hidden">
               <span className="flex items-center gap-2">
                 <BrandMark className="size-6 shrink-0" />
-                <BrandWordmark className="h-4 w-auto" />
+                Building Radar
               </span>
               <span className="flex items-center gap-2">
                 <ThemeToggle className="size-9" />

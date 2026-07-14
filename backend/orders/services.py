@@ -14,7 +14,12 @@ from django.utils import timezone
 
 from catalogs.models import CatalogItem
 from matching.memory import load_customer_memory
-from matching.models import CustomerCorrection, CustomerPreference, MatchCandidate
+from matching.models import (
+    CustomerContextFile,
+    CustomerCorrection,
+    CustomerPreference,
+    MatchCandidate,
+)
 from matching.pipeline import CONFIDENT_MARGIN, match_order_lines
 from onboarding.models import DEFAULT_SETUP_CONFIGURATION, SetupConfiguration
 
@@ -398,6 +403,10 @@ def reset_demo_data(session_id: str) -> None:
     # kind of thing that makes a demo lie.
     CustomerCorrection.objects.filter(demo_session_id=session_id).delete()
     CustomerPreference.objects.filter(demo_session_id=session_id).delete()
+    # And the agent-written briefs. Leaving these behind would mean a "start
+    # over" that still remembers, which is exactly the kind of thing that makes
+    # a demo lie about itself.
+    CustomerContextFile.objects.filter(demo_session_id=session_id).delete()
     SetupConfiguration.objects.update_or_create(
         demo_session_id=session_id, defaults=DEFAULT_SETUP_CONFIGURATION
     )
