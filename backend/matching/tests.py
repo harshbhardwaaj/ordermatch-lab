@@ -344,6 +344,104 @@ class CustomerMemoryTests(TestCase):
             normalize_request_text("  500x   hex bolt m8x40 "),
         )
 
+    def test_a_reorder_of_a_different_quantity_is_the_same_request(self):
+        """The bug this exists to stop coming back.
+
+        Nobody reorders the same count. A buyer who took 200 bolts in July and
+        150 in August asked the same question twice — which grade did you mean —
+        and the answer they gave in July has to still count in August. Keyed with
+        the quantity in it, those were two different keys, so the pin never fired
+        on any real reorder and the reviewer was asked a question they had
+        already answered.
+        """
+        from matching.memory import normalize_request_text
+
+        self.assertEqual(
+            normalize_request_text("200x Sechskantschraube M8x40 inox"),
+            normalize_request_text("150x Sechskantschraube M8x40 inox"),
+        )
+        self.assertEqual(
+            normalize_request_text("24 pcs ball bearing 6204"),
+            normalize_request_text("6 Stk ball bearing 6204"),
+        )
+        # The count is not always in front of the part.
+        self.assertEqual(
+            normalize_request_text("hex bolt m8x40 inox qty 500"),
+            normalize_request_text("hex bolt m8x40 inox qty 300"),
+        )
+        self.assertEqual(
+            normalize_request_text("kugellager 6205 2rs c3 40 stk"),
+            normalize_request_text("kugellager 6205 2rs c3 12 stk"),
+        )
+
+    def test_stripping_the_quantity_never_eats_the_spec(self):
+        """The sizes are the whole ballgame. An early cut of the trailing-quantity
+        pattern matched the "x40" inside "hex bolt m8x40" and keyed it as
+        "hex bolt m8", quietly merging M8x40 and M8x50 into one memory — teaching
+        the reviewer's answer for one part to a different part. That is a worse
+        bug than the one being fixed, so it gets its own test.
+        """
+        from matching.memory import normalize_request_text
+
+        self.assertEqual(
+            normalize_request_text("200x hex bolt m8x40"), "hex bolt m8x40"
+        )
+        self.assertNotEqual(
+            normalize_request_text("200x hex bolt m8x40"),
+            normalize_request_text("200x hex bolt m8x50"),
+        )
+        self.assertEqual(
+            normalize_request_text("50x ball bearing 6204 2rs"), "ball bearing 6204 2rs"
+        )
+        # Trailing numbers that are specs, not counts, and must survive: the 70
+        # is a shore hardness, the 100 is a length.
+        self.assertNotEqual(
+            normalize_request_text("o-ring 20x3 nbr 70"),
+            normalize_request_text("o-ring 20x3 nbr 90"),
+        )
+        self.assertNotEqual(
+            normalize_request_text("control cable 4g0.75 100"),
+            normalize_request_text("control cable 4g0.75 50"),
+        )
+
+    def test_a_pinned_correction_survives_a_reorder_of_a_different_quantity(self):
+        """End to end, and the case that was broken in production: teach it at
+        one quantity, reorder at another, and the taught SKU must come back
+        pinned and confidently ahead — not asked about again.
+        """
+        from matching.memory import apply_memory, load_customer_memory, record_correction
+        from matching.pipeline import CONFIDENT_MARGIN, ScoredCandidate
+
+        line = self._order_with_candidates(
+            "Vogt Hydraulik GmbH", text="200x Sechskantschraube M8x40 inox"
+        )
+        record_correction(
+            session_id=self.session,
+            line_item=line,
+            chosen_candidate=line.match_candidates.get(rank=2),  # the A4 bolt
+        )
+
+        memory = load_customer_memory(self.session, "Vogt Hydraulik GmbH")
+        fresh = [
+            ScoredCandidate(catalog_item=self.cheap, score=79.0),
+            ScoredCandidate(catalog_item=self.premium, score=78.0),
+        ]
+
+        # The reorder: same part, same wording, different count.
+        reranked = apply_memory(memory, "150x Sechskantschraube M8x40 inox", fresh)
+
+        self.assertEqual(reranked[0].catalog_item.sku, self.premium.sku)
+        self.assertTrue(
+            reranked[0].learned_signal["pinned"],
+            "a reorder of the same part must hit the pin, not just the soft boost",
+        )
+        self.assertGreaterEqual(
+            reranked[0].score - reranked[1].score,
+            CONFIDENT_MARGIN,
+            "a pinned reorder has to clear the confidence margin, or the reviewer "
+            "is asked a question they already answered",
+        )
+
 
 class BlockingTests(TestCase):
     """Blocking is what makes a 10k catalog possible at all: it has to get the

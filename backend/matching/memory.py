@@ -51,6 +51,38 @@ MAX_PROMPT_EXAMPLES = 8
 _WHITESPACE = re.compile(r"\s+")
 _NOISE = re.compile(r"[^\w\s./-]")
 
+# The order quantity, which is not part of what the customer is identifying.
+#
+# Leading: "200x", "200 x", "150 stk", "24 pcs", or a bare "500" at the front.
+# Anchored to position zero, so it can never eat a number inside the part itself:
+# "m8x40" and "6204 2rs" are safe because they do not start the string.
+_LEADING_QUANTITY = re.compile(
+    r"^\d+\s*(?:x|pcs?|pieces?|stk|stueck|st[uü]ck|units?|ea)?\b\s*", re.IGNORECASE
+)
+
+# Trailing: "qty 500", "500 stk", "12 pcs", "x 500".
+#
+# A bare trailing number is deliberately NOT stripped, and this is the whole
+# reason this is two patterns instead of one. "o-ring 20x3 nbr 70" ends in a
+# number that is the shore hardness, and "control cable 4g0.75 100" ends in a
+# length. Eating those would merge genuinely different parts into one memory key
+# and teach the system a correction the reviewer never made — a far worse failure
+# than the one being fixed. So a trailing count only counts when it is announced,
+# either by a keyword or a unit.
+# The leading \s+ is load-bearing, not cosmetic. Without it, the "x 500" branch
+# matches the "x40" inside "hex bolt m8x40" and the key becomes "hex bolt m8" —
+# silently merging M8x40 and M8x50 into one memory, which is the exact
+# distinction this product exists to get right. Requiring whitespace in front
+# means a trailing quantity has to be its own token, never a fragment of the size.
+_TRAILING_QUANTITY = re.compile(
+    r"\s+(?:"
+    r"(?:qty|quantity|menge|anzahl|stueck|st[uü]ck)\s*[:.]?\s*\d+"
+    r"|x\s*\d+"
+    r"|\d+\s*(?:x|pcs?|pieces?|stk|stueck|st[uü]ck|units?|ea)"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
 
 def customer_key_for(customer_name: str) -> str:
     """Stable key for a customer. slugify collapses case, punctuation, and
@@ -62,15 +94,32 @@ def customer_key_for(customer_name: str) -> str:
 def normalize_request_text(text: str | None) -> str:
     """The key an exact repeat is recognized by.
 
-    Intentionally crude: lowercase, strip punctuation, collapse whitespace.
-    It catches "500x Hex bolt M8x40" vs "hex bolt m8x40, 500" — the same
-    request retyped — and nothing cleverer. Real fuzzy recall (embed the
-    request, nearest-neighbour past corrections) is the next step; this is
-    the honest cheap version and it is what the demo can actually prove.
+    Intentionally crude: lowercase, strip punctuation, collapse whitespace, and
+    drop the leading quantity. Real fuzzy recall (embed the request,
+    nearest-neighbour past corrections) is the next step; this is the honest
+    cheap version and it is what the demo can actually prove.
+
+    The quantity has to go, and leaving it in was a real bug. A buyer who orders
+    200 of a bolt in July and 150 of the same bolt in August has written the same
+    request twice, and it is the same question — which of the four grades did you
+    mean — with the same answer. Keyed on the raw text, those are two different
+    keys, so the correction taught in July pinned nothing in August: the reviewer
+    got asked again, having already answered. The pin only ever fired on a repeat
+    of the exact same count, which is not how anybody reorders.
+
+    What is left after stripping is the part description, which is the thing the
+    customer is actually identifying and the thing the correction was about.
     """
     lowered = (text or "").strip().lower()
     lowered = _NOISE.sub(" ", lowered)
-    return _WHITESPACE.sub(" ", lowered).strip()[:255]
+    collapsed = _WHITESPACE.sub(" ", lowered).strip()
+
+    without_quantity = _LEADING_QUANTITY.sub("", collapsed, count=1)
+    without_quantity = _TRAILING_QUANTITY.sub("", without_quantity, count=1).strip()
+
+    # Guard: if the line was *only* a quantity, keep what we had rather than
+    # keying every such line on the empty string and collapsing them together.
+    return (without_quantity or collapsed)[:255]
 
 
 @dataclass
