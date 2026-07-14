@@ -26,6 +26,19 @@ class CatalogItem(models.Model):
     replacement_sku = models.CharField(max_length=128, blank=True)
     updated_at = models.DateTimeField(null=True, blank=True)
 
+    # Semantic vector for this item, so blocking can retrieve on *meaning* and
+    # not just on shared words. The lexical index cannot connect "Kugellager" to
+    # "ball bearing" or "inox" to "A2 stainless" — they have no character in
+    # common — and a German customer writing German at an English catalog is not
+    # an edge case, it is Tuesday.
+    #
+    # Bought once from the embeddings API and stored, never recomputed at match
+    # time (see catalogs/management/commands/embed_catalog.py). embedding_hash is
+    # the hash of the text it was built from: if the text has not changed, the
+    # vector is still valid and must not be bought again.
+    embedding = models.JSONField(null=True, blank=True)
+    embedding_hash = models.CharField(max_length=64, blank=True, default="")
+
     class Meta:
         ordering = ["category", "name"]
 

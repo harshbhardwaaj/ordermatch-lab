@@ -427,8 +427,12 @@ def match_order_lines(
     # the whole catalog. Without this, a 10k catalog makes the deterministic
     # pass O(lines x 10k) SequenceMatcher calls and the LLM prompt ~500k tokens.
     # The index is built once for the order, not once per line.
-    index = build_index(catalog_items)
-    shortlists = {i: index.shortlist(line) for i, line in enumerate(line_items)}
+    # line_items go in so every line's query vector is bought in one batched
+    # embeddings call for the whole order, not one call per line.
+    index = build_index(catalog_items, line_items)
+    shortlists = {
+        i: index.shortlist(line, line_index=i) for i, line in enumerate(line_items)
+    }
 
     deterministic_per_line = [
         _deterministic_candidates(line, shortlists[i]) for i, line in enumerate(line_items)

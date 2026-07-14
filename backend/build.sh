@@ -29,3 +29,11 @@ python manage.py seed_sample_data
 # redeploy leaves the rows (and anything derived from them, like embeddings)
 # alone instead of churning them.
 python manage.py load_catalog
+
+# Semantic vectors for the catalog, so retrieval understands "Kugellager" is a
+# ball bearing (matching/embeddings.py). Idempotent by content hash: the first
+# run buys ~10k embeddings for about $0.006, every run after it buys nothing and
+# takes a second. If there is no API key, or the API is down, it warns and moves
+# on rather than failing the build — retrieval degrades to lexical-only, which
+# still works.
+python manage.py embed_catalog

@@ -423,3 +423,99 @@ class BlockingTests(TestCase):
 
         self.assertLessEqual(captured["prompt_rows"], 40)
         self.assertLess(captured["prompt_rows"], len(self.catalog))
+
+
+class HybridBlockingTests(TestCase):
+    """The two retrievers, and the fusion between them.
+
+    The measured story lives in `python manage.py eval_blocking` (22 cases,
+    hybrid gets 100% recall@40 against lexical's 95%). These tests guard the
+    behaviours that eval depends on, so a regression fails the build rather than
+    quietly costing recall.
+    """
+
+    def setUp(self):
+        make_catalog_item("cat-brg", "OM-BRG-6205-2RS-C3", "Deep groove ball bearing 6205-2RS C3")
+        make_catalog_item("cat-or", "OM-SEA-OR-10X2-FKM", "O-ring 10x2 FKM 75")
+        for i in range(60):
+            make_catalog_item(f"noise-{i}", f"OM-FAS-HB-M{i}X40-ZN", f"Hex bolt M{i}x40 zinc")
+        self.catalog = list(CatalogItem.objects.all())
+
+    def test_a_bare_series_number_finds_a_compound_identifier(self):
+        """The catalog writes "6205-2RS" as one token, so a customer asking for
+        plain "6205" used to match nothing at all — which is the single most
+        common way anyone names a bearing. Caught by the eval, not by review.
+        """
+        from matching.blocking import build_index
+
+        shortlist = build_index(self.catalog).shortlist({"original_text": "sealed bearing 6205"})
+
+        self.assertIn("OM-BRG-6205-2RS-C3", {item.sku for item in shortlist})
+
+    def test_a_number_wearing_a_unit_finds_the_bare_dimension(self):
+        """The catalog spells it "10x2"; the customer writes "10mm bore, 2mm
+        section". Without unit stripping they share no size token whatsoever.
+        """
+        from matching.blocking import build_index
+
+        shortlist = build_index(self.catalog).shortlist(
+            {"original_text": "viton o-ring, 10mm bore, 2mm section"}
+        )
+
+        self.assertIn("OM-SEA-OR-10X2-FKM", {item.sku for item in shortlist})
+
+    def test_only_identifier_shaped_tokens_are_split(self):
+        """Splitting a compound token is what lets a bare "6205" find
+        "6205-2RS". It has to be limited to tokens carrying a digit.
+
+        Splitting alphabetic compounds too was tried and measurably hurt recall,
+        because it shreds prose into fragments that match everything. A SKU still
+        yields its own prefix fragments ("om", "sea"), and that is harmless for a
+        reason worth stating: those appear in every row, so their IDF is zero and
+        they contribute no score at all. It is the parts that discriminate —
+        "10x2", "fkm" — that carry the weight.
+        """
+        from matching.blocking import build_index, tokenize
+
+        tokens = tokenize("OM-SEA-OR-10X2-FKM")
+        self.assertIn("10x2", tokens)
+        self.assertIn("fkm", tokens)
+
+        # A purely alphabetic compound keeps its shape rather than being shredded.
+        self.assertNotIn("sealed", tokenize("rubber-sealed"))
+
+        # And the fragments a SKU does emit are worthless by construction: every
+        # generated SKU starts "om-", so it discriminates nothing.
+        index = build_index(self.catalog)
+        self.assertAlmostEqual(index.idf.get("om", 0.0), 0.0, places=6)
+
+    def test_no_vectors_means_lexical_only_rather_than_no_results(self):
+        """A catalog that was never embedded (no API key, embed_catalog never
+        run) must degrade, not break. This is the whole reason the two
+        retrievers are independent.
+        """
+        from matching.blocking import build_index
+
+        for item in self.catalog:
+            item.embedding = None
+
+        index = build_index(self.catalog, [{"original_text": "bearing 6205"}])
+
+        self.assertIsNone(index.semantic)
+        self.assertGreater(len(index.shortlist({"original_text": "bearing 6205"})), 0)
+
+    def test_fusion_rewards_agreement_between_the_retrievers(self):
+        """Reciprocal Rank Fusion, not concatenation. An item both retrievers
+        rank highly must beat one that only appears near the top of a single
+        list, or the semantic half would be unable to correct a confidently
+        wrong lexical ranking.
+        """
+        from matching.blocking import _merge
+
+        agreed = self.catalog[0]
+        lexical_only = self.catalog[1]
+        semantic_only = self.catalog[2]
+
+        merged = _merge([lexical_only, agreed], [semantic_only, agreed], limit=3)
+
+        self.assertEqual(merged[0].sku, agreed.sku)
