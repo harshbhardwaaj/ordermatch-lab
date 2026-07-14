@@ -20,13 +20,13 @@ The backend is a free-tier Render service and sleeps after periods of inactivity
 
 ## Walkthrough map
 
-- `/`: opening, Comena-specific framing
+- `/`: opening / hero
 - `/prototype/workflow`: the workflow diagram (order in, AI-assisted review, then ready for ERP or a human reviews)
 - `/prototype/start` to `/prototype/processing/[orderId]` to `/prototype/summary/[orderId]`: pick a sample order, or paste your own, watch it get read and matched by a real pipeline, resolve flagged lines, send to the ERP
 - `/prototype/waiting`: background orders that finished processing while you were reviewing one
 - `/prototype/orders`: full order log across every order, sample or your own, with a self-serve reset. There's no login, but each visitor's browser gets its own isolated copy of the demo data (a locally stored id, not an account) — nobody sees another visitor's orders
 - `/prototype/setup`: the repeatable customer onboarding flow: connect catalog, map fields, teach it customer language, set thresholds, run a baseline check, go live
-- `/thesis`: "How it works," a 7-slide interactive walkthrough of the engineering behind matching, confidence, and evals, each grounded in real published research (see `docs/research/engineering-thesis-sources.md`)
+- `/thesis`: "How it works," a 7-slide interactive walkthrough of the engineering behind matching, confidence, and evals, each grounded in real published research
 - `/proof`: relevant background: AI classification work at ALEVOR, an AI Investment Analyst tool, a CV-JD Fit Scorer, and TUM coursework
 - `/contact`: book a call, email, or call directly
 
@@ -96,10 +96,3 @@ echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8010" > frontend/.env.local
 The rest of the app (`/`, `/thesis`, `/proof`, `/contact`, the workflow
 diagram) doesn't need the backend at all.
 
-## Project docs
-
-`docs/` has more detail behind this project: `docs/spec-kit/` for the
-specification and architecture decisions, `docs/design-system/` for
-visual direction, component rules, and copy principles, and
-`docs/research/` for the research grounding the claims made in
-`/thesis`.

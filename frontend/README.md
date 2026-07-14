@@ -41,8 +41,8 @@ salutation) and the `data-brand` blocks of [`app/globals.css`](app/globals.css)
 deployment. It is never a new branch: a fork drifts, and the bug you fix on one
 copy is the bug you still have on the other.
 
-See [`docs/branding.md`](../docs/branding.md) for how to add one, and why the
-default is `neutral`.
+The header comment in [`lib/brand.ts`](lib/brand.ts) explains how to add a brand
+and why the default is `neutral`.
 
 ## Version Intent
 

@@ -1,10 +1,11 @@
 .DS_Store
 .idea/
 .claude/
-docs/story-bank-harsh.md
-docs/spec-kit/constitution.md
-docs/spec-kit/tasks.md
-docs/design-system/constitution-check.md
+
+# Internal planning, design, research and pitch notes. Kept locally, not in the
+# public repo: they are working material and reviewer-facing strategy, not part
+# of the product a reader of this repo is here to see.
+docs/
 
 # Environment and secrets
 .env
