@@ -8,7 +8,22 @@ class MatchCandidateSerializer(serializers.ModelSerializer):
     those stay backend-internal per clarifications.md §7. Use
     MatchCandidateInternalSerializer for backend-only consumers (e.g. the
     matching pipeline itself, admin), never for frontend-facing endpoints.
+
+    Carries the catalog item's name and price inline. The picker needs both to
+    render a candidate, and it used to get them by downloading the entire
+    catalog into the browser and looking the id up client-side. At 46 items
+    that was invisible; at 10,389 it is a 6 MB JSON download on every order
+    page. A candidate is never rendered without its own row, so the row travels
+    with it.
     """
+
+    catalog_item_name = serializers.CharField(source="catalog_item.name", default="", read_only=True)
+    catalog_item_price = serializers.FloatField(
+        source="catalog_item.price_amount", default=None, read_only=True
+    )
+    catalog_item_status = serializers.CharField(
+        source="catalog_item.status", default="", read_only=True
+    )
 
     class Meta:
         model = MatchCandidate
@@ -16,6 +31,9 @@ class MatchCandidateSerializer(serializers.ModelSerializer):
             "id",
             "line_item",
             "catalog_item",
+            "catalog_item_name",
+            "catalog_item_price",
+            "catalog_item_status",
             "sku",
             "rank",
             "proof_items",

@@ -265,7 +265,10 @@ _BATCH_SEMANTIC_SYSTEM_PROMPT = (
     "reasons only on real similarities or differences between the "
     "requested item and that specific catalog entry, not generic "
     "statements. Return exactly one result entry per line item index "
-    "given, even when its candidates list is empty. If the payload "
+    "given, even when its candidates list is empty. When a line item "
+    "carries a candidate_skus list, those are the only catalog entries "
+    "that were retrieved for it: choose from those, and do not propose a "
+    "SKU that is not in that line's list. If the payload "
     "includes past_corrections_by_this_customer, treat it as this "
     "specific customer's own resolved history: where a requested line "
     "item closely resembles one of those past requests, prefer the SKU "
@@ -281,14 +284,41 @@ def _semantic_match_batch(
     indexed_lines: list[tuple[int, dict]],
     catalog_items: list[CatalogItem],
     memory_examples: list[dict] | None = None,
+    shortlists: dict[int, list[CatalogItem]] | None = None,
 ) -> dict[int, list[dict]]:
+    """`catalog_items` is no longer the whole catalog. When shortlists are
+    supplied (matching.blocking), the prompt carries only the union of the
+    per-line shortlists — a few hundred rows at most — and each line is told
+    which of them are its own candidates. Sending 10,000 rows would be ~500k
+    tokens per call, which is neither affordable nor inside the context limit.
+    """
     if not settings.OPENAI_API_KEY or not indexed_lines:
         return {}
 
+    if shortlists:
+        # One prompt-sized catalog: the union of every escalated line's
+        # shortlist, deduplicated, instead of the full 10k.
+        union: dict[str, CatalogItem] = {}
+        for index, _ in indexed_lines:
+            for item in shortlists.get(index, []):
+                union[item.sku] = item
+        prompt_catalog = list(union.values())
+        requested = [
+            {
+                "index": index,
+                **extracted,
+                "candidate_skus": [item.sku for item in shortlists.get(index, [])],
+            }
+            for index, extracted in indexed_lines
+        ]
+    else:
+        prompt_catalog = catalog_items
+        requested = [{"index": index, **extracted} for index, extracted in indexed_lines]
+
     client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=60.0)
     payload = {
-        "requested_line_items": [{"index": index, **extracted} for index, extracted in indexed_lines],
-        "catalog": [_catalog_summary_for_llm(c) for c in catalog_items],
+        "requested_line_items": requested,
+        "catalog": [_catalog_summary_for_llm(c) for c in prompt_catalog],
     }
     # Retrieved few-shot examples, not a fine-tune: this customer's own past
     # corrections go into the prompt so the model stops *proposing* the SKU
@@ -377,12 +407,23 @@ def match_order_lines(
     each up to MAX_CANDIDATES best-first, or empty if nothing plausible
     was found at all for that line.
     """
+    from .blocking import build_index
     from .memory import apply_memory, memory_examples_for_prompt
 
-    deterministic_per_line = [_deterministic_candidates(line, catalog_items) for line in line_items]
+    # Blocking, first and always. Every later stage — the deterministic scorer,
+    # the LLM, the memory re-rank — now works on ~40 rows per line instead of
+    # the whole catalog. Without this, a 10k catalog makes the deterministic
+    # pass O(lines x 10k) SequenceMatcher calls and the LLM prompt ~500k tokens.
+    # The index is built once for the order, not once per line.
+    index = build_index(catalog_items)
+    shortlists = {i: index.shortlist(line) for i, line in enumerate(line_items)}
+
+    deterministic_per_line = [
+        _deterministic_candidates(line, shortlists[i]) for i, line in enumerate(line_items)
+    ]
     needs_escalation = [
-        (index, line_items[index])
-        for index, deterministic in enumerate(deterministic_per_line)
+        (i, line_items[i])
+        for i, deterministic in enumerate(deterministic_per_line)
         if not _is_confident(deterministic)
     ]
 
@@ -393,16 +434,20 @@ def match_order_lines(
                 needs_escalation,
                 catalog_items,
                 memory_examples_for_prompt(memory) if memory else None,
+                shortlists=shortlists,
             )
         except MatchingError:
             batch_results = {}
 
     results = []
-    for index, deterministic in enumerate(deterministic_per_line):
+    for i, deterministic in enumerate(deterministic_per_line):
         if _is_confident(deterministic):
             candidates = [deterministic[0]]
         else:
-            scored = _resolve_semantic_candidates(batch_results.get(index, []), catalog_items)
+            # Resolve against this line's own shortlist, so a SKU the model
+            # invented or borrowed from another line's candidates is dropped
+            # rather than silently accepted.
+            scored = _resolve_semantic_candidates(batch_results.get(i, []), shortlists[i])
             # The LLM found nothing better than the deterministic pass (or the
             # batched call failed outright): fall back to whatever
             # deterministic signal exists, even if weak, so the reviewer still
@@ -410,7 +455,7 @@ def match_order_lines(
             candidates = scored if scored else deterministic[:MAX_CANDIDATES]
 
         if memory:
-            candidates = apply_memory(memory, line_items[index].get("original_text") or "", candidates)
+            candidates = apply_memory(memory, line_items[i].get("original_text") or "", candidates)
         results.append(candidates)
 
     return results

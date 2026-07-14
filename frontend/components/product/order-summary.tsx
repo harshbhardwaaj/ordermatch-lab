@@ -53,8 +53,10 @@ export function OrderSummary({ orderId }: { orderId: string }) {
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    Promise.all([ensureCatalogItemsLoaded(), fetchOrder(orderId)])
-      .then(([, order]) => {
+    // The catalog is no longer preloaded: candidates carry their own name and
+    // price now, and pulling all 10,389 items meant a 6 MB download per page.
+    fetchOrder(orderId)
+      .then((order) => {
         if (cancelled) return;
         setState({ status: "success", order });
       })

@@ -39,6 +39,11 @@ export type MatchCandidate = {
   id: string;
   lineItemId: string;
   catalogItemId?: string;
+  /** Sent inline by the backend so the picker never has to download the whole
+   * catalog to render a candidate name. See MatchCandidateSerializer. */
+  catalogItemName?: string;
+  catalogItemPrice?: number;
+  catalogItemStatus?: string;
   sku?: string;
   learnedSignal?: LearnedSignal;
   // Backend-internal only (see backend/common/choices.py's ConfidenceBand

@@ -32,8 +32,14 @@ function CandidateRow({
 }) {
   const [showWhy, setShowWhy] = useState(false);
 
-  const catalogItem = getCatalogItemById(candidate.catalogItemId);
-  const name = catalogItem?.name ?? candidate.sku ?? "Catalog match";
+  // Name comes inline on the candidate now. Looking it up in a client-side
+  // catalog cache meant downloading all 10,389 items (6 MB) just to render a
+  // row; the fallback stays only for candidates served before that changed.
+  const name =
+    candidate.catalogItemName ??
+    getCatalogItemById(candidate.catalogItemId)?.name ??
+    candidate.sku ??
+    "Catalog match";
   const learned = candidate.learnedSignal;
   const reasons = candidate.proofItems ?? [];
   const against = [...(candidate.missingEvidence ?? []), ...(candidate.conflictingEvidence ?? [])];
@@ -63,6 +69,18 @@ function CandidateRow({
           <span className="flex shrink-0 items-center gap-2">
             {learned && (learned.pinned || learned.timesChosen > 0) ? (
               <LearnedBadge timesChosen={learned.timesChosen} pinned={learned.pinned} />
+            ) : null}
+            {/* The grades in this catalog differ mainly by price. Hiding it
+                would be hiding the actual decision the reviewer is making. */}
+            {candidate.catalogItemPrice != null ? (
+              <span className="font-mono text-xs font-semibold text-[var(--om-text)]">
+                {candidate.catalogItemPrice.toFixed(2)}&nbsp;€
+              </span>
+            ) : null}
+            {candidate.catalogItemStatus && candidate.catalogItemStatus !== "active" ? (
+              <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                superseded
+              </span>
             ) : null}
             {candidate.sku ? (
               <span className="font-mono text-xs text-[var(--om-muted)]">{candidate.sku}</span>

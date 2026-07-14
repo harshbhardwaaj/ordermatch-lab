@@ -91,6 +91,10 @@ type RawMatchCandidate = {
   catalog_item: string | null;
   sku: string;
   rank: number;
+  // Optional: candidates served before these were added inline carry neither.
+  catalog_item_name?: string;
+  catalog_item_price?: number | null;
+  catalog_item_status?: string;
   proof_items: RawProofItem[];
   missing_evidence: string[];
   conflicting_evidence: string[];
@@ -219,6 +223,9 @@ function adaptMatchCandidate(raw: RawMatchCandidate): MatchCandidate {
     id: raw.id,
     lineItemId: raw.line_item,
     catalogItemId: raw.catalog_item ?? undefined,
+    catalogItemName: raw.catalog_item_name || undefined,
+    catalogItemPrice: raw.catalog_item_price ?? undefined,
+    catalogItemStatus: raw.catalog_item_status || undefined,
     sku: raw.sku || undefined,
     rank: raw.rank,
     proofItems: raw.proof_items as MatchCandidate["proofItems"],

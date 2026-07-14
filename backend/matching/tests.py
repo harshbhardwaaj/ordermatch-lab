@@ -152,7 +152,7 @@ class BatchedMatchingTests(TestCase):
             "attributes": [],
         }
 
-        def fake_batch(indexed_lines, catalog_items, memory_examples=None):
+        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None):
             return {
                 index: [
                     {
@@ -343,3 +343,83 @@ class CustomerMemoryTests(TestCase):
             normalize_request_text("500x Hex Bolt, M8x40!"),
             normalize_request_text("  500x   hex bolt m8x40 "),
         )
+
+
+class BlockingTests(TestCase):
+    """Blocking is what makes a 10k catalog possible at all: it has to get the
+    right SKU into a ~40-row shortlist without an LLM, and it must never let
+    the full catalog reach the prompt.
+    """
+
+    def setUp(self):
+        from matching.blocking import build_index
+
+        # The case's own example: one request, many legitimate answers.
+        self.grades = ["ZN", "88", "A2", "A4"]
+        for grade in self.grades:
+            make_catalog_item(
+                f"cat-{grade}",
+                f"OM-FAS-HB-M8X40-{grade}",
+                f"Hex bolt M8x40 {grade} DIN 933",
+                attributes=[{"name": "thread", "value": "M8"}, {"name": "material", "value": grade}],
+            )
+        # Plenty of noise the blocker has to reject.
+        for i in range(200):
+            make_catalog_item(f"noise-{i}", f"OM-BRG-{6000 + i}-2RS", f"Deep groove ball bearing {6000 + i}-2RS")
+
+        self.catalog = list(CatalogItem.objects.all())
+        self.index = build_index(self.catalog)
+
+    def test_shortlist_retrieves_the_whole_grade_ladder(self):
+        """Every grade of the requested bolt must survive blocking. If one is
+        missing the reviewer cannot pick it, and the correction they wanted to
+        make is impossible.
+        """
+        shortlist = self.index.shortlist({"original_text": "500x hex bolt M8x40, standard"})
+
+        skus = {item.sku for item in shortlist}
+        for grade in self.grades:
+            self.assertIn(f"OM-FAS-HB-M8X40-{grade}", skus)
+
+    def test_shortlist_is_capped_far_below_the_catalog(self):
+        shortlist = self.index.shortlist({"original_text": "hex bolt M8x40"})
+
+        self.assertGreater(len(self.catalog), 200)
+        self.assertLessEqual(len(shortlist), 40)
+
+    def test_a_stated_sku_is_always_shortlisted(self):
+        """A named identifier is an answer, not a hint. It must survive blocking
+        even when the free text around it scores badly.
+        """
+        shortlist = self.index.shortlist(
+            {"original_text": "the usual thing", "requested_sku": "OM-FAS-HB-M8X40-A4"}
+        )
+
+        self.assertIn("OM-FAS-HB-M8X40-A4", {item.sku for item in shortlist})
+
+    def test_synonyms_with_no_shared_token_still_retrieve_something(self):
+        """The known hole in lexical blocking: "Kugellager" shares no token with
+        "ball bearing". It must degrade to a fuzzy sweep rather than hand the
+        reviewer an empty picker.
+        """
+        shortlist = self.index.shortlist({"original_text": "Kugellager"})
+
+        self.assertGreater(len(shortlist), 0)
+
+    def test_the_llm_never_sees_the_whole_catalog(self):
+        """The invariant the whole design rests on. If this breaks, a 10k
+        catalog is ~900k tokens per call and the app simply stops working.
+        """
+        captured = {}
+
+        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None):
+            union = {item.sku for index, _ in indexed_lines for item in shortlists[index]}
+            captured["prompt_rows"] = len(union)
+            return {}
+
+        line = {"description": "hex bolt M8x40", "original_text": "hex bolt M8x40", "attributes": []}
+        with patch("matching.pipeline._semantic_match_batch", side_effect=fake_batch):
+            match_order_lines([line], self.catalog)
+
+        self.assertLessEqual(captured["prompt_rows"], 40)
+        self.assertLess(captured["prompt_rows"], len(self.catalog))

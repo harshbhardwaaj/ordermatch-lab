@@ -15,7 +15,6 @@ import {
   ApiError,
   decideLineItem,
   deferLineItem,
-  ensureCatalogItemsLoaded,
   fetchOrder,
   fetchOrders,
   reopenLineItem,
@@ -128,8 +127,10 @@ export function OrderProcessing({ orderId }: { orderId: string }) {
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    Promise.all([ensureCatalogItemsLoaded(), fetchOrder(orderId), fetchOrders()])
-      .then(([, order, allOrders]) => {
+    // The catalog is no longer preloaded: candidates carry their own name and
+    // price now, and pulling all 10,389 items meant a 6 MB download per page.
+    Promise.all([fetchOrder(orderId), fetchOrders()])
+      .then(([order, allOrders]) => {
         if (cancelled) return;
         setState({
           status: "success",
