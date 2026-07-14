@@ -204,44 +204,65 @@ function LadderVisual() {
   );
 }
 
+/** The cost argument, made by the picture rather than by three paragraphs. The
+ * slide used to state the same thing twice, once in prose and once in a card,
+ * and read as a wall. The two panels ARE the argument: the naive way grows
+ * without limit, the brief does not. */
 function ContextVisual() {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]">
-      <header className="flex items-center justify-between gap-3 border-b border-[var(--om-border)] bg-[var(--om-surface-2)] px-4 py-2.5">
-        <span className="flex items-center gap-2">
-          <FileText className="size-3.5 text-[var(--om-accent)]" />
-          <span className="font-mono text-[11px] font-semibold text-[var(--om-text)]">
-            vogt-hydraulik-gmbh/context.md
-          </span>
-        </span>
-        <span className="font-mono text-[10px] text-[var(--om-subtle)]">~150 tokens</span>
-      </header>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="flex flex-col rounded-xl border border-[var(--om-border-strong)] bg-[var(--om-surface)] p-5">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--om-subtle)]">
+          Put every correction in the prompt
+        </p>
 
-      {/* Side by side, because this card now spans the full width of the slide
-          rather than sitting in a narrow right-hand column. */}
-      <div className="grid gap-5 p-5 sm:grid-cols-2">
-        <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--om-accent)]">
-            What they mean
-          </p>
-          <p className="mt-1.5 text-sm leading-6 text-[var(--om-muted)]">
-            &ldquo;inox&rdquo; resolves to{" "}
-            <strong className="font-semibold text-[var(--om-text)]">A4 stainless</strong>, not A2.
-          </p>
+        <div className="mt-4 flex flex-1 items-end gap-1.5">
+          {[14, 26, 40, 58, 78, 100].map((height, index) => (
+            <div key={height} className="flex flex-1 flex-col items-center gap-1.5">
+              <div
+                style={{ height: `${height}px` }}
+                className="w-full rounded-t bg-[var(--om-border-strong)]"
+              />
+              <span className="font-mono text-[9px] text-[var(--om-subtle)]">
+                {[1, 10, 50, 100, 200, 300][index]}
+              </span>
+            </div>
+          ))}
         </div>
-        <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--om-accent)]">
-            Never
-          </p>
-          <p className="mt-1.5 text-sm leading-6 text-[var(--om-muted)]">
-            Never default their inox fasteners to A2. The reviewer has already overruled that once.
-          </p>
-        </div>
+
+        <p className="mt-3 border-t border-[var(--om-border)] pt-3 text-xs leading-5 text-[var(--om-muted)]">
+          Three hundred corrections means three hundred examples in every prompt, forever.
+        </p>
+        <p className="mt-1.5 font-mono text-sm font-bold text-amber-700">cost grows with trust</p>
       </div>
 
-      <footer className="border-t border-[var(--om-border)] bg-[var(--om-surface-2)] px-4 py-2.5 text-xs text-[var(--om-muted)]">
-        Written by an agent from their corrections. Rewritten, never appended to.
-      </footer>
+      <div className="flex flex-col rounded-xl border border-[var(--om-accent)] bg-[var(--om-accent-softer)] p-5">
+        <p className="flex items-center justify-between gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--om-accent)]">
+          <span className="flex items-center gap-1.5">
+            <FileText className="size-3" />
+            context.md
+          </span>
+          <span className="font-normal text-[var(--om-subtle)]">~150 tokens</span>
+        </p>
+
+        <div className="mt-4 flex flex-1 items-end gap-1.5">
+          {[1, 10, 50, 100, 200, 300].map((corrections) => (
+            <div key={corrections} className="flex flex-1 flex-col items-center gap-1.5">
+              <div className="h-[22px] w-full rounded-t bg-[var(--om-accent)]" />
+              <span className="font-mono text-[9px] text-[var(--om-subtle)]">{corrections}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-3 border-t border-[var(--om-accent)]/30 pt-3 text-xs leading-5 text-[var(--om-muted)]">
+          One brief, rewritten. &ldquo;inox&rdquo; means{" "}
+          <strong className="font-semibold text-[var(--om-text)]">A4</strong>, never A2. The rule,
+          not the list.
+        </p>
+        <p className="mt-1.5 font-mono text-sm font-bold text-[var(--om-accent)]">
+          cost stays flat forever
+        </p>
+      </div>
     </div>
   );
 }
@@ -329,10 +350,8 @@ const SLIDES: Slide[] = [
     title: "The answer is written down, not re-bought.",
     lead: [
       "The reviewer was always going to fix that bad match. The only question worth asking is whether anything was listening.",
-      "Two things get kept. The exact wording is pinned to the exact SKU, so an identical request is never re-litigated and costs nothing forever. And the reason behind it is distilled by an agent into a short markdown brief, because a reason generalizes to line items the counters have never seen.",
-      "The brief is rewritten each time, never appended to. That is the whole trick. A correction log grows without limit, so a customer with three hundred corrections would mean three hundred examples in every prompt, forever. A brief stays a few hundred tokens. Knowing a customer well never gets more expensive.",
+      "So an agent reads their corrections and writes down the rule behind them. It rewrites that brief each time rather than adding to it, which is the whole trick: a correction log grows forever, a brief does not.",
     ],
-    note: "A reviewer can read the file, and edit it. A memory you cannot inspect is one people stop trusting, and a memory you cannot correct is one they route around.",
     visual: ContextVisual,
     layout: "stacked",
   },

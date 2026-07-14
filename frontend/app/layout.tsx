@@ -21,7 +21,11 @@ const shellStateScript = `
 `;
 
 export const metadata: Metadata = {
-  title: "OrderMatch Lab — a prototype for Building Radar, by Harsh Bhardwaj",
+  // Short enough to survive a browser tab. The full framing lives in the
+  // description and on the page itself, where there is room for it; a title
+  // that gets truncated to "OrderMatch Lab — a protot..." communicates nothing
+  // that the first two words did not.
+  title: "OrderMatch",
   description:
     "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
 };
