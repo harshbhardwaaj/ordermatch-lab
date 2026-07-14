@@ -19,3 +19,10 @@ python manage.py migrate --noinput
 # it on each deploy refreshes the seed templates without duplicating them or
 # touching any real visitor's session data.
 python manage.py seed_sample_data
+
+# The ~10k catalog. Deterministic (fixed seed), and --clear only ever removes
+# rows it generated itself, never the 46 hand-authored ones the sample orders
+# and the labelled ground truth depend on. Without this the deploy would ship
+# a 46-item catalog and the entire "the catalog is the hard part" argument
+# would be a claim about data that isn't there.
+python manage.py generate_catalog --clear
