@@ -93,7 +93,24 @@ def _system_prompt() -> str:
         "inferable; do not guess a customer part number, SKU, or quantity "
         "that is not actually present in the text. unit must be one of the "
         "given enum values; use \"unknown\" if a quantity is given with no "
-        "clear unit. attributes should capture any product specifics "
+        "clear unit. "
+        # Language is normalized here, at the door, and nowhere else. The
+        # catalog is in English; customers write German. Leaving the German
+        # word in `description` meant retrieval had to bridge the languages
+        # itself, and it could not reliably: "Sechskantschraube" embedded
+        # closer to countersunk and socket-cap screws than to hex bolts, so the
+        # right SKU never even reached the shortlist and nothing downstream
+        # could recover it. One canonical language in, one language to match
+        # against.
+        "description must be the product, written in ENGLISH, using the "
+        "standard industry term a distributor's catalog would use: "
+        "\"Sechskantschraube\" is \"hex bolt\", \"Kugellager\" is \"ball "
+        "bearing\", \"Zylinderschraube\" is \"socket cap screw\", "
+        "\"Dichtring\" is \"O-ring\", \"Absperrhahn\" is \"ball valve\", "
+        "\"Gewindestange\" is \"threaded rod\", \"Edelstahl\" is \"stainless "
+        "steel\". Translate the product term itself; do not translate or "
+        "alter original_text, which stays exactly as the customer wrote it. "
+        "attributes should capture any product specifics "
         "mentioned (thread size, length, material, standard, diameter, etc.) "
         "as name/value pairs, using the terms from the source text rather "
         f"than inventing standardized ones. Today's date is {today}. "
