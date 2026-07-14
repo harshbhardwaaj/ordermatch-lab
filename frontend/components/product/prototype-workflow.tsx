@@ -139,7 +139,7 @@ function StageCard({ stage, index }: { stage: (typeof STAGES)[number]; index: nu
           <span className="ml-auto font-mono text-[11px] text-[var(--om-subtle)]">{stage.cost}</span>
         </div>
 
-        <p className="mt-3 max-w-[68ch] text-sm leading-6 text-[var(--om-muted)]">{stage.summary}</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--om-muted)]">{stage.summary}</p>
 
         <button
           type="button"
@@ -152,7 +152,7 @@ function StageCard({ stage, index }: { stage: (typeof STAGES)[number]; index: nu
         </button>
 
         {open ? (
-          <div className="mt-3 max-w-[68ch] rounded-lg border-l-2 border-[var(--om-accent)] bg-[var(--om-surface)] p-4">
+          <div className="mt-3 rounded-lg border-l-2 border-[var(--om-accent)] bg-[var(--om-surface)] p-4">
             <p className="text-sm leading-6 text-[var(--om-muted)]">{stage.detail}</p>
             {stage.caveat ? (
               <p className="mt-3 flex gap-2 text-sm leading-6 text-[var(--om-muted)]">
@@ -177,7 +177,7 @@ export function PrototypeWorkflow() {
         <h1 className="mt-3 text-[clamp(1.6rem,3.2vw,2.8rem)] font-extrabold leading-[1.14]">
           The expensive part runs last.
         </h1>
-        <p className="mt-3 max-w-[70ch] text-[clamp(1rem,1.3vw,1.2rem)] leading-relaxed text-[var(--om-muted)]">
+        <p className="mt-3 text-[clamp(1rem,1.3vw,1.2rem)] leading-relaxed text-[var(--om-muted)]">
           You liked that the first build used the model only where it earned its keep. A
           ten-thousand item catalog makes that a requirement rather than a preference: the whole
           catalog in a prompt is about 907,000 tokens, so the model has to be the last thing that
@@ -213,7 +213,7 @@ export function PrototypeWorkflow() {
           <p className="text-[clamp(1.05rem,1.6vw,1.35rem)] font-bold leading-snug text-[var(--om-text)]">
             Step 5 feeds step 3. That loop is the whole product.
           </p>
-          <p className="mt-2 max-w-[65ch] text-sm leading-6 text-[var(--om-muted)]">
+          <p className="mt-2 text-sm leading-6 text-[var(--om-muted)]">
             Everything above it is plumbing that keeps the loop cheap enough to run on a real
             catalog. The reviewer was always going to fix the bad matches. The only question was
             whether anything was listening.

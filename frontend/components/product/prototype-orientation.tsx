@@ -72,7 +72,7 @@ export function PrototypeOrientation() {
           </div>
 
           <div className="space-y-2">
-            <p className="max-w-[60ch] text-[clamp(1rem,1.35vw,1.3rem)] leading-relaxed text-[var(--om-muted)]">
+            <p className="text-[clamp(1rem,1.35vw,1.3rem)] leading-relaxed text-[var(--om-muted)]">
               No matcher gets this right the first time. It doesn&apos;t have to. Someone is
               already sitting there fixing it.
             </p>

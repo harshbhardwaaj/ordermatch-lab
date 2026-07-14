@@ -155,23 +155,24 @@ export function AppShell({
               aria-label="OrderMatch Lab home"
               className="flex h-12 items-center gap-4 rounded-full text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
             >
-              <span className="flex size-12 shrink-0 items-center justify-center">
-                <BrandMark className="size-9" />
-              </span>
-              {/* Their wordmark, with Harsh's byline directly under it. The two
-                  travel together everywhere the chrome goes, so the app can
-                  never be mistaken for a Building Radar property. */}
-              <span
-                className={cn(
-                  "nav-rail-label flex min-w-0 flex-col gap-1 whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
-                  isNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
-                )}
-              >
-                <BrandWordmark className="h-4 w-auto" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
-                  Prototype by Harsh
+              {/* The wordmark already contains the glyph, so showing BrandMark
+                  beside it drew the same mark twice. Collapsed rail gets the
+                  glyph alone (a wordmark is illegible at 48px); expanded gets
+                  the wordmark alone, with Harsh's byline under it so authorship
+                  travels with the chrome and the app is never mistaken for a
+                  Building Radar property. */}
+              {isNavOpen ? (
+                <span className="flex min-w-0 flex-col gap-1">
+                  <BrandWordmark className="h-[18px] w-auto" />
+                  <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
+                    Prototype by Harsh
+                  </span>
                 </span>
-              </span>
+              ) : (
+                <span className="flex size-12 shrink-0 items-center justify-center">
+                  <BrandMark className="size-8" />
+                </span>
+              )}
             </TransitionLink>
 
             <nav

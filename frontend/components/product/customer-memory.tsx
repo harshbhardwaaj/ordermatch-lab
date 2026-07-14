@@ -15,7 +15,9 @@ import {
 
 import { AppShell } from "@/components/app-shell";
 import { ContextMarkdown } from "@/components/product/context-markdown";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TransitionLink } from "@/components/view-transition-link";
 import {
   editCustomerContext,
   fetchCustomerMemory,
@@ -349,9 +351,9 @@ export function CustomerMemoryView() {
           The part that matters
         </p>
         <h1 className="mt-3 text-[clamp(1.6rem,3vw,2.6rem)] font-extrabold leading-[1.14]">
-          Correct it once. It stops making that mistake.
+          The context window <span className="text-[var(--om-accent)]">is the product.</span>
         </h1>
-        <p className="mt-3 max-w-[70ch] text-[clamp(0.95rem,1.2vw,1.1rem)] leading-relaxed text-[var(--om-muted)]">
+        <p className="mt-3 text-[clamp(0.95rem,1.2vw,1.1rem)] leading-relaxed text-[var(--om-muted)]">
           Every decision a reviewer makes is logged against that customer, then an agent distills
           the log into a short brief. The matcher reads the brief on every future order. It stays
           the same size whether the customer has made three corrections or three hundred, so
@@ -447,6 +449,29 @@ export function CustomerMemoryView() {
                 </div>
               </div>
             )}
+
+            {/* Somewhere to go next. Landing here from an order summary and
+                hitting a dead end is the fastest way to lose a reader. */}
+            <div className="mt-10 flex flex-col items-start gap-4 rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)] p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-bold text-[var(--om-text)]">
+                  Want the engineering behind it?
+                </p>
+                <p className="mt-1 text-sm text-[var(--om-muted)]">
+                  How 10,202 SKUs become 40, why the model runs last, and what this costs.
+                </p>
+              </div>
+              <Button
+                asChild
+                size="lg"
+                className="shrink-0 bg-[var(--om-accent)] px-6 text-sm text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
+              >
+                <TransitionLink href="/prototype/workflow">
+                  See how it works
+                  <ArrowRight aria-hidden="true" />
+                </TransitionLink>
+              </Button>
+            </div>
           </>
         )}
       </main>
