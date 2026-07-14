@@ -152,7 +152,7 @@ class BatchedMatchingTests(TestCase):
             "attributes": [],
         }
 
-        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None):
+        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None, customer_context=""):
             return {
                 index: [
                     {
@@ -412,7 +412,7 @@ class BlockingTests(TestCase):
         """
         captured = {}
 
-        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None):
+        def fake_batch(indexed_lines, catalog_items, memory_examples=None, shortlists=None, customer_context=""):
             union = {item.sku for index, _ in indexed_lines for item in shortlists[index]}
             captured["prompt_rows"] = len(union)
             return {}

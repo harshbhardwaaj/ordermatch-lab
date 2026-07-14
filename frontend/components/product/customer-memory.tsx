@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, Sparkles, Trash2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  FileText,
+  Pencil,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { ContextMarkdown } from "@/components/product/context-markdown";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchCustomerMemory, fetchCustomers, forgetCorrection } from "@/lib/api";
+import {
+  editCustomerContext,
+  fetchCustomerMemory,
+  fetchCustomers,
+  forgetCorrection,
+  rebuildCustomerContext,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { CustomerMemory, CustomerMemorySummary } from "@/types/customer";
 
@@ -18,57 +35,153 @@ function formatDate(iso: string) {
   });
 }
 
-function CustomerList({
-  customers,
-  selectedKey,
-  onSelect,
+/** Rough, and labelled rough. The point is the order of magnitude: this file
+ * is hundreds of tokens where the raw log would be thousands and growing. */
+function estimateTokens(text: string) {
+  return Math.max(1, Math.round(text.length / 4));
+}
+
+/* The context file. This is the thing worth looking at, so it gets the space,
+ * the file chrome, and the top-left corner. ---------------------------------- */
+
+function ContextFileCard({
+  memory,
+  onRebuild,
+  onSave,
+  busy,
 }: {
-  customers: CustomerMemorySummary[];
-  selectedKey: string | null;
-  onSelect: (key: string) => void;
+  memory: CustomerMemory;
+  onRebuild: () => void;
+  onSave: (content: string) => void;
+  busy: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const file = memory.contextFile;
+  const fresh = file ? file.builtFromCorrections >= memory.totalDecisions : false;
+
   return (
-    <aside className="w-full shrink-0 md:w-72">
-      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--om-muted)]">
-        <Users className="size-3.5" />
-        Customers
-      </p>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {customers.map((customer) => (
-          <button
-            key={customer.customerKey}
-            type="button"
-            onClick={() => onSelect(customer.customerKey)}
-            className={cn(
-              "rounded-md border px-3 py-2 text-left transition-colors",
-              customer.customerKey === selectedKey
-                ? "border-[var(--om-accent)] bg-[var(--om-accent-softer)]"
-                : "border-[var(--om-border)] bg-[var(--om-surface)] hover:border-[var(--om-accent)]",
-            )}
-          >
-            <p className="truncate text-sm font-semibold text-[var(--om-text)]">
-              {customer.customerName}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--om-muted)]">
-              {customer.corrections} correction{customer.corrections === 1 ? "" : "s"} ·{" "}
-              {customer.totalDecisions} decision{customer.totalDecisions === 1 ? "" : "s"}
-            </p>
-          </button>
-        ))}
+    <section className="overflow-hidden rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]">
+      {/* File chrome. It is a file, so it should look like one. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--om-border)] bg-[var(--om-surface-2)] px-4 py-3">
+        <span className="flex min-w-0 items-center gap-2">
+          <FileText className="size-4 shrink-0 text-[var(--om-accent)]" />
+          <span className="truncate font-mono text-xs font-semibold text-[var(--om-text)]">
+            {memory.customerKey}/context.md
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          {file ? (
+            <span className="font-mono text-[11px] text-[var(--om-subtle)]">
+              ~{estimateTokens(file.content)} tokens
+            </span>
+          ) : null}
+          {file?.editedByHuman ? (
+            <span className="rounded-full border border-[var(--om-border-strong)] px-2 py-0.5 text-[10px] font-semibold text-[var(--om-muted)]">
+              edited by you
+            </span>
+          ) : null}
+
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onSave(draft);
+                  setEditing(false);
+                }}
+                className="flex items-center gap-1 rounded-md bg-[var(--om-accent)] px-2.5 py-1 text-xs font-semibold text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
+              >
+                <Check className="size-3" />
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="flex items-center gap-1 rounded-md border border-[var(--om-border)] px-2.5 py-1 text-xs font-semibold text-[var(--om-muted)] hover:text-[var(--om-text)]"
+              >
+                <X className="size-3" />
+              </button>
+            </>
+          ) : (
+            <>
+              {file ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(file.content);
+                    setEditing(true);
+                  }}
+                  className="flex items-center gap-1 rounded-md border border-[var(--om-border)] px-2.5 py-1 text-xs font-semibold text-[var(--om-muted)] transition-colors hover:border-[var(--om-accent)] hover:text-[var(--om-text)]"
+                >
+                  <Pencil className="size-3" />
+                  Edit
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onRebuild}
+                disabled={busy}
+                className="flex items-center gap-1 rounded-md border border-[var(--om-border)] px-2.5 py-1 text-xs font-semibold text-[var(--om-muted)] transition-colors hover:border-[var(--om-accent)] hover:text-[var(--om-text)] disabled:opacity-40"
+              >
+                <RefreshCw className={cn("size-3", busy && "animate-spin")} />
+                {file ? "Rebuild" : "Write it"}
+              </button>
+            </>
+          )}
+        </span>
+      </header>
+
+      <div className="p-5">
+        {editing ? (
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={16}
+            className="w-full resize-y rounded-md border border-[var(--om-border)] bg-[var(--om-bg)] p-3 font-mono text-xs leading-6 text-[var(--om-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
+          />
+        ) : file && file.content ? (
+          <ContextMarkdown content={file.content} />
+        ) : (
+          <p className="py-6 text-center text-sm text-[var(--om-muted)]">
+            No brief written yet. Correct a match on one of this customer&apos;s orders, or write
+            it now from what they have already taught us.
+          </p>
+        )}
       </div>
-    </aside>
+
+      {file ? (
+        <footer className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--om-border)] bg-[var(--om-surface-2)] px-4 py-2.5 text-xs text-[var(--om-muted)]">
+          <Sparkles className="size-3 shrink-0 text-[var(--om-accent)]" />
+          <span>
+            Written by the {file.generatedBy === "human" ? "reviewer" : "agent"} from{" "}
+            <strong className="font-semibold text-[var(--om-text)]">
+              {file.builtFromCorrections}
+            </strong>{" "}
+            decision{file.builtFromCorrections === 1 ? "" : "s"}.
+          </span>
+          {!fresh ? (
+            <span className="flex items-center gap-1 text-amber-700">
+              <AlertTriangle className="size-3" />
+              New decisions since. Rebuild to fold them in.
+            </span>
+          ) : null}
+          <span className="ml-auto">The matcher reads this on every order.</span>
+        </footer>
+      ) : null}
+    </section>
   );
 }
 
-/** The lessons the matcher actually reads back before it ranks anything.
- * Shown separately from the raw history because they are different things:
- * history is what happened, this is what the system concluded from it. */
+/* The deterministic half: exact wording to exact SKU. -------------------- */
+
 function LearnedRules({ memory }: { memory: CustomerMemory }) {
   if (memory.learnedRules.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-[var(--om-border-strong)] p-3 text-xs text-[var(--om-muted)]">
-        Nothing learned yet. Correct a match on one of this customer&apos;s orders and the rule
-        will appear here.
+      <p className="rounded-lg border border-dashed border-[var(--om-border-strong)] p-4 text-xs text-[var(--om-muted)]">
+        Nothing pinned yet.
       </p>
     );
   }
@@ -78,28 +191,24 @@ function LearnedRules({ memory }: { memory: CustomerMemory }) {
       {memory.learnedRules.map((rule) => (
         <div
           key={`${rule.normalizedRequest}-${rule.sku}`}
-          className="rounded-md border border-[var(--om-border)] bg-[var(--om-surface)] p-3"
+          className={cn(
+            "rounded-lg border p-3",
+            rule.pinned
+              ? "border-[var(--om-accent)] bg-[var(--om-accent-softer)]"
+              : "border-[var(--om-border)] bg-[var(--om-surface)]",
+          )}
         >
-          <div className="flex items-start justify-between gap-3">
-            <p className="min-w-0 flex-1 text-xs text-[var(--om-muted)]">
-              When they write{" "}
-              <span className="font-medium text-[var(--om-text)]">
-                &ldquo;{rule.normalizedRequest}&rdquo;
-              </span>
-            </p>
-            {rule.pinned ? (
-              <span className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--om-accent)] bg-[var(--om-accent-softer)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--om-accent)]">
-                <Sparkles className="size-2.5" />
-                Pinned
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 flex items-center gap-1.5 text-sm">
-            <ArrowRight className="size-3.5 shrink-0 text-[var(--om-muted)]" />
-            <span className="font-mono text-xs font-semibold text-[var(--om-text)]">{rule.sku}</span>
+          <p className="truncate text-xs text-[var(--om-muted)]">
+            &ldquo;{rule.normalizedRequest}&rdquo;
           </p>
-          <p className="mt-1 text-xs text-[var(--om-subtle)]">
-            chosen {rule.timesChosen}× · rejected {rule.timesRejected}×
+          <p className="mt-1 flex items-center gap-1.5">
+            <ArrowRight className="size-3 shrink-0 text-[var(--om-accent)]" />
+            <span className="truncate font-mono text-xs font-semibold text-[var(--om-text)]">
+              {rule.sku}
+            </span>
+          </p>
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-[var(--om-subtle)]">
+            {rule.pinned ? "pinned" : `chosen ${rule.timesChosen}x / rejected ${rule.timesRejected}x`}
           </p>
         </div>
       ))}
@@ -113,13 +222,13 @@ function History({
   forgettingId,
 }: {
   memory: CustomerMemory;
-  onForget: (correctionId: string) => void;
+  onForget: (id: string) => void;
   forgettingId: string | null;
 }) {
   if (memory.history.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-[var(--om-border-strong)] p-3 text-xs text-[var(--om-muted)]">
-        No decisions logged for this customer yet.
+      <p className="rounded-lg border border-dashed border-[var(--om-border-strong)] p-4 text-xs text-[var(--om-muted)]">
+        No decisions logged yet.
       </p>
     );
   }
@@ -129,56 +238,44 @@ function History({
       {memory.history.map((entry) => (
         <div
           key={entry.id}
-          className={cn(
-            "rounded-md border p-3",
-            entry.wasCorrection
-              ? "border-amber-300 bg-amber-50/40"
-              : "border-[var(--om-border)] bg-[var(--om-surface)]",
-          )}
+          className="group rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] p-3"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-[var(--om-muted)]">
-                {entry.orderNumber ? `${entry.orderNumber} · ` : ""}
-                {formatDate(entry.createdAt)}
-              </p>
-              <p className="mt-0.5 truncate text-sm font-medium text-[var(--om-text)]">
-                &ldquo;{entry.requestText}&rdquo;
-              </p>
-            </div>
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--om-text)]">
+              &ldquo;{entry.requestText}&rdquo;
+            </p>
             <button
               type="button"
               onClick={() => onForget(entry.id)}
               disabled={forgettingId === entry.id}
               title="Forget this lesson"
-              className="shrink-0 rounded-md border border-[var(--om-border)] p-1.5 text-[var(--om-muted)] transition-colors hover:border-red-300 hover:text-red-600 disabled:opacity-40"
+              className="shrink-0 rounded p-1 text-[var(--om-subtle)] opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-40"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-3" />
             </button>
           </div>
 
           {entry.wasCorrection ? (
-            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <AlertTriangle className="size-3 shrink-0 text-amber-600" />
-              <span className="text-[var(--om-muted)]">AI said</span>
-              <span className="font-mono text-[var(--om-text)] line-through">
-                {entry.suggestedSku || "—"}
+            <p className="mt-1.5 flex flex-wrap items-center gap-1 font-mono text-[11px]">
+              <span className="text-[var(--om-subtle)] line-through">
+                {entry.suggestedSku || "none"}
               </span>
-              <ArrowRight className="size-3 shrink-0 text-[var(--om-muted)]" />
-              <span className="text-[var(--om-muted)]">human chose</span>
-              <span className="font-mono font-semibold text-[var(--om-text)]">
-                {entry.chosenSku || entry.customLabel || "—"}
+              <ArrowRight className="size-3 text-[var(--om-accent)]" />
+              <span className="font-semibold text-[var(--om-text)]">
+                {entry.chosenSku || entry.customLabel}
               </span>
-              {entry.chosenRank ? (
-                <span className="text-[var(--om-subtle)]">(was ranked #{entry.chosenRank})</span>
-              ) : null}
             </p>
           ) : (
-            <p className="mt-2 text-xs text-[var(--om-muted)]">
-              Confirmed the AI&apos;s top pick:{" "}
-              <span className="font-mono text-[var(--om-text)]">{entry.chosenSku || "—"}</span>
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] text-[var(--om-muted)]">
+              <Check className="size-3 text-green-600" />
+              AI was right
             </p>
           )}
+
+          <p className="mt-1 text-[10px] text-[var(--om-subtle)]">
+            {entry.orderNumber ? `${entry.orderNumber} · ` : ""}
+            {formatDate(entry.createdAt)}
+          </p>
         </div>
       ))}
     </div>
@@ -190,6 +287,7 @@ export function CustomerMemoryView() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [memory, setMemory] = useState<CustomerMemory | null>(null);
   const [forgettingId, setForgettingId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     fetchCustomers().then((rows) => {
@@ -204,72 +302,141 @@ export function CustomerMemoryView() {
     fetchCustomerMemory(selectedKey).then(setMemory);
   }, [selectedKey]);
 
-  async function handleForget(correctionId: string) {
+  async function refresh() {
     if (!selectedKey) return;
-    setForgettingId(correctionId);
-    await forgetCorrection(selectedKey, correctionId);
-    const [refreshed, refreshedCustomers] = await Promise.all([
-      fetchCustomerMemory(selectedKey),
-      fetchCustomers(),
-    ]);
-    setMemory(refreshed);
-    setCustomers(refreshedCustomers);
-    setForgettingId(null);
+    const [next, rows] = await Promise.all([fetchCustomerMemory(selectedKey), fetchCustomers()]);
+    setMemory(next);
+    setCustomers(rows);
+  }
+
+  async function handleRebuild() {
+    if (!selectedKey) return;
+    setBusy(true);
+    try {
+      await rebuildCustomerContext(selectedKey, true);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSave(content: string) {
+    if (!selectedKey) return;
+    setBusy(true);
+    try {
+      await editCustomerContext(selectedKey, content);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleForget(id: string) {
+    if (!selectedKey) return;
+    setForgettingId(id);
+    try {
+      await forgetCorrection(selectedKey, id);
+      await refresh();
+    } finally {
+      setForgettingId(null);
+    }
   }
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-bold text-[var(--om-text)]">What the matcher has learned</h1>
-        <p className="mt-1 max-w-2xl text-sm text-[var(--om-muted)]">
-          Every match decision a reviewer makes is remembered against that customer. The next order
-          from them is ranked with it — the same wording gets the SKU they picked last time, not the
-          one the AI guessed. Memory is per customer on purpose: &ldquo;M8 bolt, standard&rdquo;
-          means a different grade to different buyers.
+      <main id="main" className="w-full px-[4vw] py-10 text-[var(--om-text)]">
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[var(--om-accent)]">
+          The part that matters
+        </p>
+        <h1 className="mt-3 text-[clamp(1.6rem,3vw,2.6rem)] font-extrabold leading-[1.14]">
+          Correct it once. It stops making that mistake.
+        </h1>
+        <p className="mt-3 max-w-[70ch] text-[clamp(0.95rem,1.2vw,1.1rem)] leading-relaxed text-[var(--om-muted)]">
+          Every decision a reviewer makes is logged against that customer, then an agent distills
+          the log into a short brief. The matcher reads the brief on every future order. It stays
+          the same size whether the customer has made three corrections or three hundred, so
+          knowing them well never gets more expensive.
         </p>
 
         {customers === null ? (
-          <Skeleton className="mt-6 h-64 w-full" />
+          <Skeleton className="mt-8 h-96 w-full" />
         ) : customers.length === 0 ? (
-          <p className="mt-6 rounded-md border border-dashed border-[var(--om-border-strong)] p-6 text-center text-sm text-[var(--om-muted)]">
-            Nothing learned yet. Resolve a flagged line on any order and it shows up here.
+          <p className="mt-8 rounded-xl border border-dashed border-[var(--om-border-strong)] p-10 text-center text-sm text-[var(--om-muted)]">
+            Nothing learned yet. Resolve a flagged line on any order and it appears here.
           </p>
         ) : (
-          <div className="mt-6 flex flex-col gap-6 md:flex-row">
-            <CustomerList
-              customers={customers}
-              selectedKey={selectedKey}
-              onSelect={setSelectedKey}
-            />
+          <>
+            {/* Customers as cards, not a sidebar list: with two of them the
+                contradiction between them is the point, and a row puts them
+                side by side where you can see it. */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              {customers.map((customer) => {
+                const active = customer.customerKey === selectedKey;
+                return (
+                  <button
+                    key={customer.customerKey}
+                    type="button"
+                    onClick={() => setSelectedKey(customer.customerKey)}
+                    className={cn(
+                      "min-w-56 flex-1 rounded-xl border p-4 text-left transition-all",
+                      active
+                        ? "border-[var(--om-accent)] bg-[var(--om-accent-softer)] shadow-sm"
+                        : "border-[var(--om-border)] bg-[var(--om-surface)] hover:border-[var(--om-border-strong)]",
+                    )}
+                  >
+                    <p className="truncate font-semibold text-[var(--om-text)]">
+                      {customer.customerName}
+                    </p>
+                    <p className="mt-1 flex items-baseline gap-1.5">
+                      <span
+                        className={cn(
+                          "text-2xl font-extrabold leading-none",
+                          active ? "text-[var(--om-accent)]" : "text-[var(--om-text)]",
+                        )}
+                      >
+                        {customer.corrections}
+                      </span>
+                      <span className="text-xs text-[var(--om-muted)]">
+                        correction{customer.corrections === 1 ? "" : "s"} taught
+                      </span>
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
 
-            <div className="min-w-0 flex-1">
-              {memory === null ? (
-                <Skeleton className="h-64 w-full" />
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h2 className="text-lg font-bold text-[var(--om-text)]">
-                      {memory.customerName}
+            {memory === null ? (
+              <Skeleton className="mt-6 h-96 w-full" />
+            ) : (
+              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+                <ContextFileCard
+                  memory={memory}
+                  onRebuild={handleRebuild}
+                  onSave={handleSave}
+                  busy={busy}
+                />
+
+                <div className="flex flex-col gap-6">
+                  <section>
+                    <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--om-muted)]">
+                      Pinned exactly
                     </h2>
-                    <p className="text-xs text-[var(--om-muted)]">
-                      {memory.corrections} of {memory.totalDecisions} decisions overruled the AI
+                    <p className="mt-1 text-xs text-[var(--om-subtle)]">
+                      Same wording, same SKU, no model call.
                     </p>
-                  </div>
-
-                  <section className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--om-muted)]">
-                      Learned rules — what the matcher reads back
-                    </p>
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <LearnedRules memory={memory} />
                     </div>
                   </section>
 
-                  <section className="mt-6">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--om-muted)]">
-                      Decision history — what actually happened
+                  <section>
+                    <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--om-muted)]">
+                      Decision log
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--om-subtle)]">
+                      The raw truth. The brief is rebuilt from this.
                     </p>
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <History
                         memory={memory}
                         onForget={handleForget}
@@ -277,10 +444,10 @@ export function CustomerMemoryView() {
                       />
                     </div>
                   </section>
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </AppShell>

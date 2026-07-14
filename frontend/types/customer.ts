@@ -45,4 +45,16 @@ export type CustomerMemory = {
   corrections: number;
   history: CustomerCorrection[];
   learnedRules: CustomerLearnedRule[];
+  contextFile: CustomerContextFile | null;
+};
+
+/** The agent-written brief the matcher actually reads (backend:
+ * matching/context_file.py). Compacted from the correction log rather than
+ * appended to, so the prompt cost of knowing a customer well stays flat. */
+export type CustomerContextFile = {
+  content: string;
+  builtFromCorrections: number;
+  editedByHuman: boolean;
+  generatedBy: string;
+  updatedAt: string;
 };

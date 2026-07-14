@@ -77,6 +77,11 @@ def normalize_request_text(text: str | None) -> str:
 class CustomerMemory:
     customer_key: str = ""
     customer_name: str = ""
+    # The agent-written brief about this customer (matching.context_file).
+    # Sent to the matcher instead of the raw correction list: it is compacted,
+    # bounded, and it carries the *reason* behind the corrections, which
+    # generalizes to line items the counters below have never seen.
+    context_markdown: str = ""
     # normalized request -> sku -> {"chosen": n, "rejected": n, "pinned": bool}
     by_request: dict[str, dict[str, dict]] = field(default_factory=lambda: defaultdict(dict))
     # sku -> {"chosen": n, "rejected": n}, summed across every request this
@@ -119,6 +124,15 @@ def load_customer_memory(session_id: str, customer_name: str) -> CustomerMemory:
         }
         for correction in corrections
     ]
+
+    # Imported here rather than at module scope: context_file imports the models
+    # this module also uses, and a top-level import would be circular.
+    from .context_file import get_context_file
+
+    context = get_context_file(session_id, key)
+    if context:
+        memory.context_markdown = context.content
+
     return memory
 
 

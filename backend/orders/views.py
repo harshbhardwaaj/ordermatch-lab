@@ -4,6 +4,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from matching.context_file import build_context_file, get_context_file
 from matching.memory import record_correction
 from matching.models import MatchCandidate, MatchDecision
 
@@ -168,12 +169,35 @@ class OrderLineItemViewSet(viewsets.ReadOnlyModelViewSet):
         # every decision, not just the ones that overruled the AI: a confirmed
         # top pick is the evidence that it was right, and a memory fed only on
         # its own failures learns a badly skewed picture.
-        record_correction(
+        correction = record_correction(
             session_id=request.demo_session_id,
             line_item=line_item,
             chosen_candidate=candidate,
             custom_label=custom_label,
         )
+
+        # Rewrite the customer's context.md whenever they actually taught us
+        # something (matching.context_file). Only on a real correction: a
+        # confirmation changes the counters but adds nothing a brief could say,
+        # and rebuilding on every click would burn a model call per keystroke.
+        #
+        # A human-edited file is left alone. They can rebuild it deliberately
+        # from the memory screen if they want the agent's version back.
+        if correction.was_correction:
+            existing = get_context_file(request.demo_session_id, correction.customer_key)
+            if not (existing and existing.edited_by_human):
+                try:
+                    build_context_file(
+                        request.demo_session_id,
+                        correction.customer_key,
+                        correction.customer_name,
+                    )
+                except Exception:
+                    # Never fail the reviewer's decision because the brief could
+                    # not be rewritten. The decision is the thing that matters;
+                    # the file can be rebuilt from the log at any time.
+                    pass
+
         return Response(OrderLineItemSerializer(line_item).data)
 
     @action(detail=True, methods=["post"])

@@ -542,10 +542,30 @@ type RawLearnedRule = {
   pinned: boolean;
 };
 
+type RawContextFile = {
+  content: string;
+  built_from_corrections: number;
+  edited_by_human: boolean;
+  generated_by: string;
+  updated_at: string;
+};
+
 type RawCustomerMemory = RawCustomerSummary & {
   history: RawCustomerCorrection[];
   learned_rules: RawLearnedRule[];
+  context_file: RawContextFile | null;
 };
+
+function adaptContextFile(raw: RawContextFile | null) {
+  if (!raw) return null;
+  return {
+    content: raw.content,
+    builtFromCorrections: raw.built_from_corrections,
+    editedByHuman: raw.edited_by_human,
+    generatedBy: raw.generated_by,
+    updatedAt: raw.updated_at,
+  };
+}
 
 export async function fetchCustomers(): Promise<CustomerMemorySummary[]> {
   const raw: RawCustomerSummary[] = await apiFetch("/api/customers/");
@@ -582,7 +602,24 @@ export async function fetchCustomerMemory(customerKey: string): Promise<Customer
       timesRejected: row.times_rejected,
       pinned: row.pinned,
     })),
+    contextFile: adaptContextFile(raw.context_file),
   };
+}
+
+export async function rebuildCustomerContext(customerKey: string, force = false) {
+  const raw: RawContextFile = await apiFetch(`/api/customers/${customerKey}/rebuild-context/`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
+  return adaptContextFile(raw);
+}
+
+export async function editCustomerContext(customerKey: string, content: string) {
+  const raw: RawContextFile = await apiFetch(`/api/customers/${customerKey}/edit-context/`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+  return adaptContextFile(raw);
 }
 
 export async function forgetCorrection(customerKey: string, correctionId: string): Promise<void> {

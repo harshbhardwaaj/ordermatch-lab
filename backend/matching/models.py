@@ -129,6 +129,49 @@ class CustomerCorrection(models.Model):
         return f"{self.customer_key}: {self.normalized_request} -> {self.chosen_sku or self.custom_label}"
 
 
+class CustomerContextFile(models.Model):
+    """A short markdown brief about one customer, written by an agent from that
+    customer's correction log, and handed to the matcher as context.
+
+    This is the semantic half of the memory. CustomerPreference is the
+    deterministic half: it knows that this exact wording maps to that exact
+    SKU, and it re-ranks instantly and for free. What it cannot hold is *why* —
+    "Vogt builds for coastal sites, so they want marine-grade A4 and zinc is
+    never acceptable" — and a reason generalizes to line items the counters
+    have never seen.
+
+    Why a written file rather than stuffing every correction into the prompt:
+
+    - Cost. The correction log grows without limit. A customer with 300
+      corrections would mean 300 examples in every prompt, forever. The file is
+      compacted, bounded (TARGET_TOKENS), and rewritten rather than appended,
+      so prompt cost stays flat no matter how long the customer has been with
+      you. Deciding what is worth keeping is the agent's actual job.
+    - Trust. A rep can read it. They can also fix it: `edited_by_human` marks a
+      file the agent must not silently overwrite, because a person correcting
+      the memory is the most reliable signal in the whole system, and throwing
+      that away on the next rebuild would be the fastest way to lose them.
+    """
+
+    demo_session_id = models.CharField(max_length=40, blank=True, default="", db_index=True)
+    customer_key = models.CharField(max_length=128, db_index=True)
+    customer_name = models.CharField(max_length=255)
+
+    content = models.TextField(blank=True)
+    # How many corrections the current content was distilled from, so the UI can
+    # say "3 new corrections since this was written" instead of guessing.
+    built_from_corrections = models.PositiveIntegerField(default=0)
+    edited_by_human = models.BooleanField(default=False)
+    generated_by = models.CharField(max_length=32, default="agent")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("demo_session_id", "customer_key")]
+
+    def __str__(self) -> str:
+        return f"context.md for {self.customer_key}"
+
+
 class CustomerPreference(models.Model):
     """The aggregate the matcher reads: for one customer and one normalized
     request, how often each SKU was chosen and how often it was rejected in

@@ -269,14 +269,17 @@ _BATCH_SEMANTIC_SYSTEM_PROMPT = (
     "carries a candidate_skus list, those are the only catalog entries "
     "that were retrieved for it: choose from those, and do not propose a "
     "SKU that is not in that line's list. If the payload "
-    "includes past_corrections_by_this_customer, treat it as this "
-    "specific customer's own resolved history: where a requested line "
-    "item closely resembles one of those past requests, prefer the SKU "
-    "the human corrected it to and rank the SKU they overruled below it. "
-    "Their correction is better evidence about what they meant than the "
-    "catalog text is. Do not apply it where the line item genuinely "
-    "differs — a past correction about a bolt says nothing about a "
-    "bearing."
+    "includes about_this_customer, that is a brief written from this "
+    "customer's own past corrections: treat it as authoritative about "
+    "what their wording means and which grade they actually want, "
+    "because a human reviewer put it there. Apply it only where it "
+    "genuinely bears on the line item; a rule about bolt grades says "
+    "nothing about a bearing. If the payload instead includes "
+    "past_corrections_by_this_customer, treat those as this customer's "
+    "own resolved history: where a requested line item closely resembles "
+    "one of those past requests, prefer the SKU the human corrected it "
+    "to and rank the SKU they overruled below it. Their correction is "
+    "better evidence about what they meant than the catalog text is."
 )
 
 
@@ -285,6 +288,7 @@ def _semantic_match_batch(
     catalog_items: list[CatalogItem],
     memory_examples: list[dict] | None = None,
     shortlists: dict[int, list[CatalogItem]] | None = None,
+    customer_context: str = "",
 ) -> dict[int, list[dict]]:
     """`catalog_items` is no longer the whole catalog. When shortlists are
     supplied (matching.blocking), the prompt carries only the union of the
@@ -320,11 +324,19 @@ def _semantic_match_batch(
         "requested_line_items": requested,
         "catalog": [_catalog_summary_for_llm(c) for c in prompt_catalog],
     }
-    # Retrieved few-shot examples, not a fine-tune: this customer's own past
-    # corrections go into the prompt so the model stops *proposing* the SKU
-    # they keep overruling. Re-ranking alone would only fix the reviewer's
-    # screen; this fixes the suggestion.
-    if memory_examples:
+    # The customer's context.md (matching.context_file): a short agent-written
+    # brief carrying the *reason* behind their past corrections, so the model
+    # stops proposing the SKU they keep overruling. Preferred over dumping the
+    # raw corrections, because the file is compacted and bounded while the log
+    # grows forever — a customer with 300 corrections would otherwise mean 300
+    # examples in every prompt.
+    #
+    # The raw examples remain the fallback for a customer whose file has not
+    # been written yet, so a first correction still teaches something
+    # immediately rather than waiting on a rebuild.
+    if customer_context:
+        payload["about_this_customer"] = customer_context
+    elif memory_examples:
         payload["past_corrections_by_this_customer"] = memory_examples
 
     try:
@@ -435,6 +447,7 @@ def match_order_lines(
                 catalog_items,
                 memory_examples_for_prompt(memory) if memory else None,
                 shortlists=shortlists,
+                customer_context=memory.context_markdown if memory else "",
             )
         except MatchingError:
             batch_results = {}

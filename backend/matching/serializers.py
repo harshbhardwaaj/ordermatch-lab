@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
-from .models import CustomerCorrection, CustomerPreference, MatchCandidate, MatchDecision
+from .models import (
+    CustomerContextFile,
+    CustomerCorrection,
+    CustomerPreference,
+    MatchCandidate,
+    MatchDecision,
+)
 
 
 class MatchCandidateSerializer(serializers.ModelSerializer):
@@ -76,6 +82,20 @@ class CustomerCorrectionSerializer(serializers.ModelSerializer):
             "was_correction",
             "order_number",
             "created_at",
+        ]
+
+
+class CustomerContextFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerContextFile
+        fields = [
+            "customer_key",
+            "customer_name",
+            "content",
+            "built_from_corrections",
+            "edited_by_human",
+            "generated_by",
+            "updated_at",
         ]
 
 
