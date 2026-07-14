@@ -77,7 +77,7 @@ export function OpeningSection() {
                 hex bolt m8x40 inox
               </span>
               <span className="absolute inset-x-0 top-1 block text-[var(--om-success)] [animation:hero-chip-swap-alt_4s_ease-in-out_infinite]">
-                A4, not A2 — you fixed this once
+                A4, not A2. You fixed this once.
               </span>
             </div>
           </div>

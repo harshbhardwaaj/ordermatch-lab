@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { BrandMark } from "@/components/brand-mark";
+import { BrandMark, BrandWordmark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
 import { icons } from "@/lib/icons";
@@ -156,19 +156,20 @@ export function AppShell({
               className="flex h-12 items-center gap-4 rounded-full text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
             >
               <span className="flex size-12 shrink-0 items-center justify-center">
-                <BrandMark className="size-12" />
+                <BrandMark className="size-9" />
               </span>
+              {/* Their wordmark, with Harsh's byline directly under it. The two
+                  travel together everywhere the chrome goes, so the app can
+                  never be mistaken for a Building Radar property. */}
               <span
                 className={cn(
-                  "nav-rail-label flex min-w-0 flex-col whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
+                  "nav-rail-label flex min-w-0 flex-col gap-1 whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none",
                   isNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
                 )}
               >
-                <span className="text-sm font-bold leading-5 text-[var(--om-text)]">
-                  OrderMatch Lab
-                </span>
+                <BrandWordmark className="h-4 w-auto" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
-                  Building Radar prototype
+                  Prototype by Harsh
                 </span>
               </span>
             </TransitionLink>
@@ -307,7 +308,7 @@ export function AppShell({
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl text-sm font-semibold marker:hidden">
               <span className="flex items-center gap-2">
                 <BrandMark className="size-6 shrink-0" />
-                OrderMatch Lab
+                <BrandWordmark className="h-4 w-auto" />
               </span>
               <span className="flex items-center gap-2">
                 <ThemeToggle className="size-9" />
