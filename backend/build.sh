@@ -20,9 +20,12 @@ python manage.py migrate --noinput
 # touching any real visitor's session data.
 python manage.py seed_sample_data
 
-# The ~10k catalog. Deterministic (fixed seed), and --clear only ever removes
-# rows it generated itself, never the 46 hand-authored ones the sample orders
-# and the labelled ground truth depend on. Without this the deploy would ship
-# a 46-item catalog and the entire "the catalog is the hard part" argument
-# would be a claim about data that isn't there.
-python manage.py generate_catalog --clear
+# The ~10k catalog, loaded from the checked-in fixture rather than regenerated.
+#
+# generate_catalog is an authoring tool and must never run on a deploy. SKUs are
+# referenced by every correction, learned preference and context.md, so they have
+# to be stable: regenerating on deploy would let an edit to the generator shift a
+# SKU underneath a memory that points at it. Loading is also idempotent, so a
+# redeploy leaves the rows (and anything derived from them, like embeddings)
+# alone instead of churning them.
+python manage.py load_catalog

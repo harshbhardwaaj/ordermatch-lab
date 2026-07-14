@@ -24,7 +24,9 @@ so regenerating over them would quietly break the labelled eval set.
 
 from __future__ import annotations
 
+import json
 import random
+from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -36,6 +38,10 @@ from catalogs.models import CatalogItem
 SEED = 20260714
 
 GENERATED_PREFIX = "gen-"
+
+FIXTURE_PATH = (
+    Path(__file__).resolve().parent.parent.parent.parent / "seed_data" / "generated_catalog.jsonl"
+)
 
 # Grade ladders. Ordered weakest to strongest, and price scales with position,
 # which is exactly the "steigende Haltbarkeit, steigender Preis" from the brief.
@@ -346,13 +352,39 @@ BUILDERS = [_fasteners, _bearings, _seals, _valves, _fittings, _sensors, _cables
 
 
 class Command(BaseCommand):
-    help = "Generate a ~10k-item industrial catalog with grade ladders and superseded parts."
+    """Regenerates the catalog fixture. This is an authoring tool, not part of
+    a deploy.
+
+    The generated catalog is written to seed_data/generated_catalog.json and
+    checked in, and `load_catalog` is what actually populates a database from
+    it. That split matters:
+
+    - SKUs become stable. Corrections, learned preferences and every
+      context.md refer to catalog items by SKU. If the generator were re-run
+      on each deploy and any list in this file were ever edited, SKUs would
+      shift underneath a memory that points at them, and a customer's learned
+      rules would quietly start referring to items that no longer exist.
+    - The catalog outlives the database. Render's free Postgres is deleted 30
+      days after creation; a file in the repo is not.
+    - It can be read. A reviewer can open the fixture, diff it, and see
+      exactly what the matcher is matching against.
+
+    Regenerating deliberately (`--export`) is fine. Regenerating by accident,
+    on every deploy, is what this prevents.
+    """
+
+    help = "Regenerate the catalog fixture (seed_data/generated_catalog.json). Authoring tool."
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--export",
+            action="store_true",
+            help="Write the fixture to seed_data/generated_catalog.json (does not touch the database).",
+        )
+        parser.add_argument(
             "--clear",
             action="store_true",
-            help="Delete previously generated items first (never touches the 46 hand-authored ones).",
+            help="Delete previously generated rows from the database first.",
         )
 
     @transaction.atomic
@@ -410,28 +442,56 @@ class Command(BaseCommand):
             retired["replacement_sku"] = replacement["sku"]
             superseded_count += 1
 
-        objects = []
-        for index, row in enumerate(rows):
-            objects.append(
-                CatalogItem(
-                    id=f"{GENERATED_PREFIX}{index:06d}",
-                    sku=row["sku"],
-                    name=row["name"],
-                    category=row["category"],
-                    description=row["description"],
-                    manufacturer=rng.choice(MANUFACTURERS),
-                    manufacturer_part_number=f"{rng.randint(10000, 99999)}-{rng.randint(100, 999)}",
-                    customer_part_numbers=[],
-                    attributes=row["attributes"],
-                    default_unit=row["unit"],
-                    price_amount=row["price"],
-                    price_currency="EUR",
-                    status=row.get("status", "active"),
-                    replacement_sku=row.get("replacement_sku", ""),
+        # Flat, serializable records: the same shape whether they go straight to
+        # the database or out to the fixture, so the two can never drift.
+        records = [
+            {
+                "id": f"{GENERATED_PREFIX}{index:06d}",
+                "sku": row["sku"],
+                "name": row["name"],
+                "category": row["category"],
+                "description": row["description"],
+                "manufacturer": rng.choice(MANUFACTURERS),
+                "manufacturer_part_number": f"{rng.randint(10000, 99999)}-{rng.randint(100, 999)}",
+                "attributes": row["attributes"],
+                "default_unit": row["unit"],
+                "price_amount": row["price"],
+                "price_currency": "EUR",
+                "status": row.get("status", "active"),
+                "replacement_sku": row.get("replacement_sku", ""),
+            }
+            for index, row in enumerate(rows)
+        ]
+
+        if options["export"]:
+            FIXTURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            # JSON Lines: one compact item per line. Pretty-printed JSON was
+            # 6.8 MB and a one-line change showed up as a rewrite of the whole
+            # file; this is a third of the size and diffs one row at a time, so
+            # a change to the generator is legible in review rather than a wall
+            # of red.
+            FIXTURE_PATH.write_text(
+                "\n".join(
+                    json.dumps(record, ensure_ascii=False, separators=(",", ":"))
+                    for record in records
+                )
+                + "\n"
+            )
+            size_mb = FIXTURE_PATH.stat().st_size / 1_000_000
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Wrote {len(records)} items ({superseded_count} superseded) to "
+                    f"{FIXTURE_PATH.name} ({size_mb:.1f} MB). "
+                    f"Run `python manage.py load_catalog` to load it."
                 )
             )
+            return
 
-        CatalogItem.objects.bulk_create(objects, batch_size=1000, ignore_conflicts=True)
+        CatalogItem.objects.bulk_create(
+            [CatalogItem(customer_part_numbers=[], **record) for record in records],
+            batch_size=1000,
+            ignore_conflicts=True,
+        )
 
         total = CatalogItem.objects.count()
         active = CatalogItem.objects.filter(status="active").count()
