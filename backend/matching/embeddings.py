@@ -29,6 +29,7 @@ degraded but works — and never to nothing.
 from __future__ import annotations
 
 import hashlib
+import threading
 
 import numpy as np
 from django.conf import settings
@@ -66,6 +67,16 @@ def text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:64]
 
 
+def vector_to_bytes(vector: list[float]) -> bytes:
+    """How a vector is stored: float32, little-endian, no envelope.
+
+    The width is not recorded because it is fixed by DIMENSIONS. A row of the
+    wrong length is therefore a row embedded by an older model, and the reader
+    skips it rather than trusting it (see SemanticIndex).
+    """
+    return np.asarray(vector, dtype=np.float32).tobytes()
+
+
 def embed_texts(texts: list[str]) -> list[list[float]] | None:
     """Returns one vector per input, or None when embedding is unavailable.
 
@@ -96,24 +107,26 @@ def embed_texts(texts: list[str]) -> list[list[float]] | None:
 class SemanticIndex:
     """The catalog's vectors as one matrix, plus a cosine search over it.
 
-    Loaded straight out of the database into numpy and cached for the life of
-    the process, because the memory arithmetic is unforgiving. Measured on the
-    real 10,202-item catalog:
+    Loaded once per process and cached, because the memory arithmetic is
+    unforgiving: Render's free instance is 512 MB, and the matrix has to be built
+    without ever materializing the catalog's 3.9 million floats as Python
+    objects. Measured on the real 10,202-item catalog, building this index:
 
-        django, idle                        54 MB
-        + catalog rows carrying embeddings 365 MB   <-- and this per request
-        + both indexes built               436 MB
+        vectors as a JSON column   +86 MB resident, and never returned
+        vectors as float32 bytes   +16 MB, which is the matrix itself
 
-    against Render's 512 MB. One concurrent request and the process dies. The
-    cost is not the numpy matrix, which is 16 MB; it is holding 10,202 x 384
-    Python floats, which is roughly 300 MB of pointers and boxed objects. So the
-    embeddings are never loaded onto the model instances at all (callers use
-    .defer("embedding")); they come out of the DB as raw values, go straight into
-    one float32 array, and the Python lists are freed immediately.
+    The 86 MB was not the matrix. It was the boxed floats the JSON decoder had
+    to create on the way to it — freed immediately, but the allocator keeps the
+    heap it fragmented, so the cost is permanent. That was most of the reason a
+    single pasted order could get the worker SIGKILLed.
 
-    Cached because the vectors do not change between deploys: rebuilding this on
-    every order was buying 300 MB of garbage per request to produce a matrix that
-    was byte-identical to the last one.
+    So the vectors are stored as raw float32 bytes (catalogs.models.CatalogItem)
+    and each row is one np.frombuffer memcpy into a preallocated array. No
+    intermediate Python floats exist at any point.
+
+    Cached because the vectors do not change while the app runs: only
+    embed_catalog writes them, and it runs at build time. Callers still
+    .defer("embedding") so the rows themselves never carry the bytes around.
 
     Rows are L2-normalized once, which turns cosine similarity into a plain dot
     product: one matrix-vector multiply for the whole catalog, a few
@@ -121,32 +134,49 @@ class SemanticIndex:
     """
 
     _cached: SemanticIndex | None = None
+    _lock = threading.Lock()
 
     def __init__(self):
         total = CatalogItem.objects.exclude(embedding=None).count()
 
-        self.available = total > 0
         self.row_skus: list[str] = []
 
-        if not self.available:
+        if total == 0:
+            self.available = False
             self.matrix = np.zeros((0, DIMENSIONS), dtype=np.float32)
             return
 
-        # Preallocate and fill row by row. Materializing the vectors as a list
-        # first and handing that to np.asarray works, and costs ~240 MB of peak
-        # RSS on a 512 MB box, because for a moment every one of the 3.9 million
-        # floats is a boxed Python object. Streaming them into a preallocated
-        # float32 array means only one chunk is ever alive at a time.
-        self.matrix = np.zeros((total, DIMENSIONS), dtype=np.float32)
+        matrix = np.zeros((total, DIMENSIONS), dtype=np.float32)
 
+        # .iterator() so the driver streams the rows instead of buffering all
+        # 10k at once, and the bytes of one chunk are the only vector data alive
+        # at a time.
         rows = (
             CatalogItem.objects.exclude(embedding=None)
             .values_list("sku", "embedding")
-            .iterator(chunk_size=500)
+            .iterator(chunk_size=1000)
         )
-        for index, (sku, vector) in enumerate(rows):
-            self.matrix[index] = vector
+
+        row = 0
+        for sku, blob in rows:
+            vector = np.frombuffer(blob, dtype=np.float32)
+            if vector.size != DIMENSIONS:
+                # A vector from an older model, or a different width. Skipping it
+                # costs one item's semantic recall; trusting it would silently
+                # misalign every row after it. embed_catalog rewrites it on the
+                # next build.
+                continue
+            matrix[row] = vector
             self.row_skus.append(sku)
+            row += 1
+
+        # Trim the rows nothing was written into (skipped vectors), so a row
+        # index in the matrix always means the same item as in row_skus.
+        self.matrix = matrix[:row]
+        self.available = row > 0
+
+        if not self.available:
+            return
 
         norms = np.linalg.norm(self.matrix, axis=1, keepdims=True)
         # An all-zero vector would divide by zero and poison the matrix with
@@ -157,8 +187,14 @@ class SemanticIndex:
 
     @classmethod
     def load(cls) -> SemanticIndex:
+        # The web process serves on threads (see backend/start.sh), so two
+        # requests arriving together on a cold process would otherwise both
+        # build the matrix — twice the memory spike, at exactly the worst moment.
+        # The second one waits and gets the first one's index.
         if cls._cached is None:
-            cls._cached = cls()
+            with cls._lock:
+                if cls._cached is None:
+                    cls._cached = cls()
         return cls._cached
 
     @classmethod

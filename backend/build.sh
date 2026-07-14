@@ -11,8 +11,14 @@ set -o errexit  # any failing step fails the build, rather than shipping a half-
 
 pip install -r requirements.txt
 
-# Additive only: new tables and a new column with a default. Safe to run
-# against the existing database — no data is dropped or rewritten.
+# Safe to run against the existing database: no order, correction, preference or
+# context file is dropped or rewritten.
+#
+# One exception, and it is deliberate: 0003 drops and re-adds the embedding
+# column to change it from JSON to raw bytes, so the vectors are thrown away.
+# embed_catalog below re-buys them (~$0.006, about a minute). They are the only
+# thing here that is safe to lose, because they are derived data and nothing
+# references them by value.
 python manage.py migrate --noinput
 
 # Idempotent (every write is update_or_create / get_or_create), so re-running

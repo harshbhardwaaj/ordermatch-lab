@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import math
 import re
+import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
@@ -126,9 +127,10 @@ def _line_text(extracted: dict) -> str:
 @dataclass
 class CatalogIndex:
     """An inverted index over the catalog, plus (when vectors exist) a semantic
-    index beside it. Built once per order, not per line: the build is the
-    expensive part (one pass over 10k rows) and every line of the same order
-    queries the same index.
+    index beside it. The expensive parts — tokenizing 10k rows, loading the
+    vector matrix — are cached and shared (see _lexical_index and
+    embeddings.SemanticIndex); what an order actually builds is its own query
+    vectors.
 
     Two retrievers, deliberately. Lexical is exact on "M8x40" and "DIN 933" and
     blind to meaning; semantic understands "Kugellager" is a ball bearing and
@@ -297,16 +299,51 @@ def _merge(primary: list[CatalogItem], secondary: list[CatalogItem], limit: int)
     return [by_sku[sku] for sku, _ in ordered[:limit]]
 
 
-def build_index(
-    catalog_items: list[CatalogItem], line_items: list[dict] | None = None
-) -> CatalogIndex:
-    """Builds the lexical index, and the semantic one when the catalog carries
-    vectors.
+@dataclass
+class _Lexical:
+    """The half of the index that depends only on the catalog, and therefore
+    does not change between orders."""
 
-    `line_items` lets every line's query vector be bought in a single batched
-    embeddings call for the whole order, rather than one call per line. A
-    twenty-line order should cost one round trip, not twenty.
+    postings: dict[str, list[int]]
+    idf: dict[str, float]
+    token_counts: list[int]
+    by_sku: dict[str, int]
+    by_part_number: dict[str, int]
+
+
+# Keyed on the identity of the catalog list, not its contents: the web path
+# hands in the same cached list object every time (catalogs.snapshot), so it
+# hits, while eval commands and tests build their own lists and correctly get
+# their own index. Dropped whenever a catalog item is written (catalogs.apps).
+_lexical_cache: tuple[list[CatalogItem], _Lexical] | None = None
+_lexical_lock = threading.Lock()
+
+
+def invalidate_lexical_index() -> None:
+    global _lexical_cache
+    _lexical_cache = None
+
+
+def _lexical_index(catalog_items: list[CatalogItem]) -> _Lexical:
+    """Tokenizes the whole catalog. One pass over 10k rows, so it is the
+    expensive part of matching an order — and it produced an identical result
+    every time, because the catalog does not change while the app is running.
+    Built once per process now, not once per order.
     """
+    if _lexical_cache is not None and _lexical_cache[0] is catalog_items:
+        return _lexical_cache[1]
+
+    # The web process serves on threads, so hold the lock while building: two
+    # cold requests at once would otherwise each tokenize 10k rows.
+    with _lexical_lock:
+        if _lexical_cache is not None and _lexical_cache[0] is catalog_items:
+            return _lexical_cache[1]
+        return _build_lexical(catalog_items)
+
+
+def _build_lexical(catalog_items: list[CatalogItem]) -> _Lexical:
+    global _lexical_cache
+
     postings: dict[str, list[int]] = defaultdict(list)
     token_counts: list[int] = []
     by_sku: dict[str, int] = {}
@@ -327,6 +364,38 @@ def build_index(
         token: math.log(total / len(item_indexes))
         for token, item_indexes in postings.items()
     }
+
+    lexical = _Lexical(
+        postings=postings,
+        idf=idf,
+        token_counts=token_counts,
+        by_sku=by_sku,
+        by_part_number=by_part_number,
+    )
+    _lexical_cache = (catalog_items, lexical)
+    return lexical
+
+
+def build_index(
+    catalog_items: list[CatalogItem], line_items: list[dict] | None = None
+) -> CatalogIndex:
+    """Builds the lexical index, and the semantic one when the catalog carries
+    vectors.
+
+    `line_items` lets every line's query vector be bought in a single batched
+    embeddings call for the whole order, rather than one call per line. A
+    twenty-line order should cost one round trip, not twenty.
+
+    The lexical half is cached per catalog and the semantic matrix is cached per
+    process. What is actually built here, per order, is only this order's query
+    vectors.
+    """
+    lexical = _lexical_index(catalog_items)
+    postings = lexical.postings
+    idf = lexical.idf
+    token_counts = lexical.token_counts
+    by_sku = lexical.by_sku
+    by_part_number = lexical.by_part_number
 
     # The semantic half, but only if the catalog has actually been embedded. A
     # catalog with no vectors (no API key, embed_catalog never run) degrades to

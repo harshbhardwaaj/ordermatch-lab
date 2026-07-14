@@ -14,7 +14,14 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 
 from catalogs.models import CatalogItem
-from matching.embeddings import DIMENSIONS, MODEL, embed_texts, embedding_text, text_hash
+from matching.embeddings import (
+    DIMENSIONS,
+    MODEL,
+    embed_texts,
+    embedding_text,
+    text_hash,
+    vector_to_bytes,
+)
 
 
 class Command(BaseCommand):
@@ -28,13 +35,21 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        items = list(CatalogItem.objects.all())
+        # .defer("embedding") so the rows do not drag 10k vectors into memory
+        # just to be told most of them are unchanged. Which items already have
+        # one is a single id query instead — reading item.embedding on a deferred
+        # row would fire one SELECT per item, 10k of them.
+        items = list(CatalogItem.objects.all().defer("embedding"))
+        already_embedded = set(
+            CatalogItem.objects.exclude(embedding=None).values_list("id", flat=True)
+        )
 
         stale = []
         for item in items:
             text = embedding_text(item)
             current = text_hash(text)
-            if options["force"] or not item.embedding or item.embedding_hash != current:
+            missing = item.id not in already_embedded
+            if options["force"] or missing or item.embedding_hash != current:
                 stale.append((item, text, current))
 
         if not stale:
@@ -63,7 +78,7 @@ class Command(BaseCommand):
             return
 
         for (item, _, current), vector in zip(stale, vectors):
-            item.embedding = vector
+            item.embedding = vector_to_bytes(vector)
             item.embedding_hash = current
 
         CatalogItem.objects.bulk_update(

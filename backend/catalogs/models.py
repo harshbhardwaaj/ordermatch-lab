@@ -36,7 +36,15 @@ class CatalogItem(models.Model):
     # time (see catalogs/management/commands/embed_catalog.py). embedding_hash is
     # the hash of the text it was built from: if the text has not changed, the
     # vector is still valid and must not be bought again.
-    embedding = models.JSONField(null=True, blank=True)
+    #
+    # Raw float32 bytes, not JSON. As JSON, Postgres hands the vector back as a
+    # list of 384 Python floats, so loading the catalog's vectors created ~3.9
+    # million float objects — 86 MB of heap to build a 15 MB matrix, and the
+    # allocator never gave it back. That alone was most of a 512 MB box. As
+    # bytes it is one memcpy per row (matching.embeddings.SemanticIndex), and
+    # the width is fixed by DIMENSIONS, so nothing is lost by dropping JSON's
+    # self-describing shape.
+    embedding = models.BinaryField(null=True, blank=True)
     embedding_hash = models.CharField(max_length=64, blank=True, default="")
 
     class Meta:

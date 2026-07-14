@@ -5,6 +5,21 @@ Django + Django REST Framework + Postgres. Deployed on Render at
 SKU matching, confidence-gated routing, and eval generation, all via the
 OpenAI API, called only from backend endpoints, never from the browser.
 
+## Render configuration
+
+Both commands live in the repo, not the dashboard, because both are
+load-bearing and neither is discoverable from a web form when a deploy breaks.
+
+| Render setting | Value |
+| --- | --- |
+| Build Command | `./backend/build.sh` |
+| Start Command | `./backend/start.sh` |
+
+`start.sh` runs one gunicorn worker on threads, caps the glibc malloc arenas,
+and recycles the worker periodically. The instance is 512 MB and a single
+pasted order used to peak near that; see the comments in the file, and
+`matching/embeddings.py`, for what the memory is actually spent on.
+
 ## Local development
 
 Requires Python 3.11+ and a local Postgres server.
