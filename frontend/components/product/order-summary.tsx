@@ -23,7 +23,6 @@ import {
   ApiError,
   decideLineItem,
   deferLineItem,
-  ensureCatalogItemsLoaded,
   fetchOrder,
   reopenLineItem,
   sendOrderToErp,
