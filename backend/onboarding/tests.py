@@ -9,9 +9,9 @@ from .models import SetupConfiguration
 class SetupConfigurationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.client.credentials(HTTP_X_DEMO_SESSION_ID="test-session-fixed")
+        self.client.credentials(HTTP_X_DEMO_SESSION_ID="0000000000000000000000000000f1ed")
         self.config = SetupConfiguration.objects.create(
-            demo_session_id="test-session-fixed",
+            demo_session_id="0000000000000000000000000000f1ed",
             auto_approve_threshold=85,
             price_flag_threshold=15,
         )

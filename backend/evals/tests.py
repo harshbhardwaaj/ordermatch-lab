@@ -159,3 +159,14 @@ class GenerateEvalRunTests(TestCase):
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0].severity, "blocking")
         self.assertIn("could not read that", failures[0].actual)
+
+
+class EvalRouteRemovedTests(TestCase):
+    """security-review.md finding 3: /api/eval-runs/ served every metric and
+    failure case unauthenticated. It is unregistered; nothing should resolve."""
+
+    def test_eval_runs_endpoint_is_not_public(self):
+        from django.test import Client
+
+        response = Client().get("/api/eval-runs/")
+        self.assertEqual(response.status_code, 404)

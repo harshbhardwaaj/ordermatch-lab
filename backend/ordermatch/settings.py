@@ -26,8 +26,11 @@ SECRET_KEY = os.environ.get(
     "django-insecure-1egt6r(@_d3@kh759c++$3oa9g_n^c#b#=$3r4v5@yh594$u!u",
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+# Defaults to OFF, and the direction is the security property. A deploy that
+# forgets to set DJANGO_DEBUG must fail closed — serving a generic 500 — not
+# fail open with tracebacks and settings on every error page. Opt *in* to debug
+# for local work (the .env.example does); production sets nothing and is safe.
+DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 
 ALLOWED_HOSTS = [
     host.strip()

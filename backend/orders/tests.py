@@ -17,7 +17,7 @@ from .services import ensure_session_samples
 # Fixed so tests can create fixtures and set the test client's demo-session
 # cookie to the exact same value (see common.middleware.DemoSessionMiddleware),
 # rather than racing a real client-assigned random one.
-TEST_SESSION_ID = "test-session-fixed"
+TEST_SESSION_ID = "0000000000000000000000000000f1ed"
 
 
 def make_order(order_id="ord-test-1", status="review-needed", demo_session_id=TEST_SESSION_ID):
@@ -582,12 +582,12 @@ class DemoSessionIsolationTests(TestCase):
 
     def test_two_sessions_get_isolated_order_lists(self):
         client_a = APIClient()
-        client_a.credentials(HTTP_X_DEMO_SESSION_ID="session-a")
+        client_a.credentials(HTTP_X_DEMO_SESSION_ID="000000000000000000000000000005ea")
         client_b = APIClient()
-        client_b.credentials(HTTP_X_DEMO_SESSION_ID="session-b")
+        client_b.credentials(HTTP_X_DEMO_SESSION_ID="000000000000000000000000000005eb")
 
-        make_order(order_id="ord-a", demo_session_id="session-a")
-        make_order(order_id="ord-b", demo_session_id="session-b")
+        make_order(order_id="ord-a", demo_session_id="000000000000000000000000000005ea")
+        make_order(order_id="ord-b", demo_session_id="000000000000000000000000000005eb")
 
         ids_a = {order["id"] for order in client_a.get("/api/orders/").json()}
         ids_b = {order["id"] for order in client_b.get("/api/orders/").json()}
@@ -604,9 +604,9 @@ class DemoSessionIsolationTests(TestCase):
 
     def test_setup_configuration_is_isolated_per_session(self):
         client_a = APIClient()
-        client_a.credentials(HTTP_X_DEMO_SESSION_ID="session-config-a")
+        client_a.credentials(HTTP_X_DEMO_SESSION_ID="00000000000000000000000000c0f16a")
         client_b = APIClient()
-        client_b.credentials(HTTP_X_DEMO_SESSION_ID="session-config-b")
+        client_b.credentials(HTTP_X_DEMO_SESSION_ID="00000000000000000000000000c0f16b")
 
         config_id_a = client_a.get("/api/setup-configuration/").json()[0]["id"]
         client_a.patch(
