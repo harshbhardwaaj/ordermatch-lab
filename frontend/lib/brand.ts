@@ -92,8 +92,11 @@ const NEUTRAL: Brand = {
     headlineLead: "with ",
     headlineAccent: "memory and context",
     headlineTail: " preserved.",
+    // One line. The headline already said what it is, and the pages after this
+    // one explain the rest properly; a hero that explains everything is a hero
+    // nobody finishes reading.
     subtitle:
-      "Customers write shorthand, a part number, or German. Your catalog has 10,000 SKUs, the same item sold at four grades, and superseded parts still listed. The agent matches every line, shows how confident it is, and sends what it is unsure about to a human. Correct it once, and it stops making that mistake for that customer.",
+      "10,000 SKUs, the same part at four grades, superseded ones still listed. Correct it once, and it stops making that mistake for that customer.",
   },
   contactHeadline: "Let's talk.",
   metaDescription:
