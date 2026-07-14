@@ -676,3 +676,53 @@ class SharedWorkspaceTests(TestCase):
         self.assertEqual(
             CustomerCorrection.objects.filter(demo_session_id="building-radar").count(), 1
         )
+
+
+class StatedSupersessionTests(TestCase):
+    """The catalog knows what supersedes what. Show that first.
+
+    Caught by an eval run: a customer ordered a discontinued M10x35, and the
+    picker's top suggestion was an M10x40 — a different length — because that row
+    shared the grade, while the actual replacement differed in grade and scored
+    lower. The line correctly went to review, so nothing wrong could reach the
+    ERP, but the reviewer was being asked to hunt for an answer the catalog was
+    already holding.
+    """
+
+    def test_the_declared_replacement_is_ranked_first_and_flagged(self):
+        from orders.services import _hoist_stated_replacement
+
+        class FakeItem:
+            def __init__(self, sku):
+                self.sku = sku
+
+        class FakeCandidate:
+            def __init__(self, sku, score):
+                self.catalog_item = FakeItem(sku)
+                self.score = score
+
+        # The scorer liked the wrong-length variant best.
+        candidates = [
+            FakeCandidate("OM-FAS-CS-M10X40-129-DIN7991", 88.0),
+            FakeCandidate("OM-FAS-CS-M10X35-A4-DIN7991", 71.0),  # the real replacement
+        ]
+        hoisted = _hoist_stated_replacement(
+            candidates, "OM-FAS-CS-M10X35-A4-DIN7991", "om-fas-cs-m10x35-129-din7991"
+        )
+        self.assertEqual(hoisted[0].catalog_item.sku, "OM-FAS-CS-M10X35-A4-DIN7991")
+
+    def test_nothing_is_hoisted_when_no_discontinued_part_was_named(self):
+        from orders.services import _hoist_stated_replacement
+
+        class FakeItem:
+            def __init__(self, sku):
+                self.sku = sku
+
+        class FakeCandidate:
+            def __init__(self, sku, score):
+                self.catalog_item = FakeItem(sku)
+                self.score = score
+
+        candidates = [FakeCandidate("A", 90.0), FakeCandidate("B", 80.0)]
+        unchanged = _hoist_stated_replacement(candidates, None, "")
+        self.assertEqual([c.catalog_item.sku for c in unchanged], ["A", "B"])

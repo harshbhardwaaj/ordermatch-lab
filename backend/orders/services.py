@@ -28,6 +28,12 @@ from .extraction import extract_order
 from .models import OrderLineItem, OrderRecord
 
 
+# What a catalog-declared replacement scores. High, because the catalog is
+# asserting it rather than a model guessing it — but the substitution still
+# forces human review regardless of score, so this only decides ordering.
+REPLACEMENT_SCORE = 90.0
+
+
 def _new_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:10]}"
 
@@ -103,6 +109,68 @@ def _is_substitution(candidate, stated_replacement_sku: str | None, replacement_
     if stated_replacement_sku and sku == stated_replacement_sku:
         return True
     return candidate.matched_via == "llm" and sku in replacement_skus
+
+
+def _hoist_stated_replacement(candidates, stated_replacement_sku: str | None, stated_identifier: str):
+    """When the customer names a discontinued part, put its designated
+    replacement at the top of the picker.
+
+    The catalog already knows the answer: the discontinued row carries a
+    replacement_sku, put there by whoever maintains the catalog. Ignoring it and
+    letting the scorer rank freely is how a reviewer ends up being shown the
+    wrong part first, which is exactly what an eval run caught. A customer
+    ordered a discontinued M10x35, and the top suggestion came back as an M10x40
+    — a different length — because that row happened to share the grade, while
+    the actual replacement differed in grade and scored lower. The line went to
+    review, so nothing wrong reached the ERP, but the reviewer was being asked to
+    find an answer the catalog was already holding.
+
+    This does not auto-approve anything: a substitution always forces human
+    review at the call site. It only decides what the human is shown first, which
+    is the whole job of a picker.
+    """
+    if not stated_replacement_sku:
+        return candidates
+
+    for index, candidate in enumerate(candidates):
+        if candidate.catalog_item.sku == stated_replacement_sku:
+            if index:
+                candidates.insert(0, candidates.pop(index))
+            return candidates
+
+    # The replacement was not retrieved at all: the customer's wording described
+    # the *old* part, and the replacement can differ enough (a different grade,
+    # a different standard) that neither retriever surfaces it. Fetch it by SKU
+    # and put it in, or the one row that is certainly right is the one row the
+    # reviewer cannot pick.
+    replacement = (
+        CatalogItem.objects.filter(sku=stated_replacement_sku, status="active")
+        .defer("embedding")
+        .first()
+    )
+    if not replacement:
+        return candidates
+
+    from matching.pipeline import ScoredCandidate
+
+    candidates.insert(
+        0,
+        ScoredCandidate(
+            catalog_item=replacement,
+            score=REPLACEMENT_SCORE,
+            matched_via="catalog-supersession",
+            proof_items=[
+                {
+                    "kind": "availability",
+                    "label": "The catalog lists this as the replacement for the discontinued part",
+                    "sourceValue": stated_identifier,
+                    "catalogValue": replacement.sku,
+                    "supportsMatch": True,
+                }
+            ],
+        ),
+    )
+    return candidates
 
 
 def _is_confidently_ahead(candidates) -> bool:
@@ -214,6 +282,8 @@ def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRec
 
         stated_identifier = _norm(line.get("customer_part_number")) or _norm(line.get("requested_sku"))
         stated_replacement_sku = discontinued_replacements.get(stated_identifier) if stated_identifier else None
+        # The catalog knows what supersedes what. Show that first.
+        candidates = _hoist_stated_replacement(candidates, stated_replacement_sku, stated_identifier)
         confidently_ahead = _is_confidently_ahead(candidates)
 
         top_row = None
