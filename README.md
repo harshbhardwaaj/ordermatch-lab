@@ -71,11 +71,26 @@ npm test
 ### Backend
 
 The order review and setup flows call a real backend. See
-`backend/README.md` for local Postgres setup and running the Django API,
-then point the frontend at it with `frontend/.env.local`:
+`backend/README.md` for local Postgres setup and running the Django API.
 
-```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8010
+**Ports, once, so nobody has to think about them again:**
+
+| | Port |
+| --- | --- |
+| backend (Django) | **8000** |
+| frontend (Next.js) | **3000** |
+
+Both are the framework defaults, and the frontend already falls back to
+`http://localhost:8000` when nothing is configured (`frontend/lib/api.ts`). So
+local development needs **no `.env.local` at all**: start the backend, start the
+frontend, they find each other.
+
+If port 8000 is taken on your machine, that is the only reason to override, and
+you must change both halves or the frontend will talk to nothing:
+
+```bash
+python manage.py runserver 8010          # backend on a different port
+echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8010" > frontend/.env.local
 ```
 
 The rest of the app (`/`, `/thesis`, `/proof`, `/contact`, the workflow

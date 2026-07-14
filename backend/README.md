@@ -52,10 +52,11 @@ python manage.py migrate
 python manage.py seed_sample_data
 ```
 
-Start the server:
+Start the server. It listens on **port 8000**, which is what the frontend
+expects by default, so there is nothing to configure on either side:
 
 ```bash
-python manage.py runserver
+python manage.py runserver          # http://localhost:8000
 ```
 
 Run the test suite:

@@ -4,7 +4,14 @@ import type { MatchCandidate } from "@/types/match";
 import type { OrderException, ReadinessCheck } from "@/types/order";
 import type { SyntheticOrderRecord } from "@/data/orders";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Local dev needs no configuration: the backend runs on Django's default 8000
+// (see backend/README.md) and this falls back to it. Set NEXT_PUBLIC_API_BASE_URL
+// only to point somewhere else — a deployed backend, or a different local port
+// because 8000 was taken. Change one half without the other and the frontend
+// quietly talks to nothing, which is exactly the afternoon this comment exists
+// to save you.
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
