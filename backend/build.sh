@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Render build command. Point the service's "Build Command" at:
+# Render build command. The service's Root Directory is backend/, so the
+# "Build Command" is relative to it:
 #
-#     ./backend/build.sh
+#     ./build.sh
 #
 # Kept in the repo rather than typed into the Render dashboard so that what
 # runs on deploy is reviewable, versioned, and the same for everyone — a

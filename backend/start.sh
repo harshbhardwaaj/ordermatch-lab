@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Render start command. Point the service's "Start Command" at:
+# Render start command. The service's Root Directory is backend/, so the
+# "Start Command" is relative to it:
 #
-#     ./backend/start.sh
+#     ./start.sh
 #
 # In the repo rather than the dashboard for the same reason as build.sh: the
 # flags below are load-bearing, and a flag that only exists in a web form is a

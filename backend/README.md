@@ -12,8 +12,11 @@ load-bearing and neither is discoverable from a web form when a deploy breaks.
 
 | Render setting | Value |
 | --- | --- |
-| Build Command | `./backend/build.sh` |
-| Start Command | `./backend/start.sh` |
+| Root Directory | `backend` |
+| Build Command | `./build.sh` |
+| Start Command | `./start.sh` |
+
+The commands are relative to the root directory, not the repo root.
 
 `start.sh` runs one gunicorn worker on threads, caps the glibc malloc arenas,
 and recycles the worker periodically. The instance is 512 MB and a single
