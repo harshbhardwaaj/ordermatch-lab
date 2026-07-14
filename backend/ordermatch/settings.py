@@ -179,11 +179,20 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 # One shared workspace instead of a private copy per browser (see
 # common.middleware.DemoSessionMiddleware).
 #
-# Set, because this build goes to one company. The learning loop is the whole
-# point of it, and a memory that evaporates when you close the tab is not a
-# memory: corrections have to still be there tomorrow, and be there for the
-# colleague you forwarded the link to. That is worth more here than isolation.
+# Empty by default, and that direction is the whole point.
 #
-# Unset it (SHARED_DEMO_SESSION_ID="") for a link sent to strangers, who would
-# otherwise be able to read and reset each other's work.
-SHARED_DEMO_SESSION_ID = os.environ.get("SHARED_DEMO_SESSION_ID", "building-radar")
+# Set to a string, every visitor shares one workspace. That is right for a link
+# addressed to one company: the learning loop is the point of this build, and a
+# memory that evaporates when you close the tab is not a memory. Corrections have
+# to still be there tomorrow, and be there for the colleague they forwarded it to.
+#
+# Empty, every visitor gets their own isolated copy. That is right for a public
+# link, and it must be what happens when nobody configured anything, because the
+# other failure is unacceptable: a shared workspace on a public URL lets strangers
+# read and reset each other's work, and if it is the same workspace an invited
+# company is reading, someone can wipe your deliverable while they have it open.
+#
+# So the deployment that wants the risky mode has to ask for it by name
+# (SHARED_DEMO_SESSION_ID=building-radar), and forgetting to set anything can only
+# ever land you in the safe one.
+SHARED_DEMO_SESSION_ID = os.environ.get("SHARED_DEMO_SESSION_ID", "")
