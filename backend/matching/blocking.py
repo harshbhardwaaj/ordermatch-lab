@@ -179,7 +179,16 @@ class CatalogIndex:
         if not vector:
             return []
 
-        return [self.items[index] for index, _ in self.semantic.search(vector, limit)]
+        # The semantic index is a process-wide cache built from the whole
+        # catalog, so it can return a SKU this order's item list does not
+        # contain (a discontinued row, say). Map back by SKU and drop anything
+        # that is not in play.
+        found = []
+        for sku, _ in self.semantic.search(vector, limit):
+            index = self.by_sku.get(sku.strip().lower())
+            if index is not None:
+                found.append(self.items[index])
+        return found
 
     def shortlist(
         self, extracted: dict, limit: int = SHORTLIST_SIZE, line_index: int | None = None
@@ -323,13 +332,17 @@ def build_index(
     # catalog with no vectors (no API key, embed_catalog never run) degrades to
     # lexical-only rather than failing, which is the whole point of keeping them
     # as two independent retrievers.
+    #
+    # The vectors are NOT read off catalog_items. Callers defer that column
+    # precisely so the rows do not carry 300 MB of boxed Python floats; the
+    # matrix is a process-wide cache loaded once, straight from the DB.
     semantic = None
     query_vectors: dict[int, list[float]] = {}
 
-    if any(item.embedding for item in catalog_items):
+    if line_items is not None:
         from .embeddings import SemanticIndex, embed_texts
 
-        index = SemanticIndex(catalog_items)
+        index = SemanticIndex.load()
         if index.available:
             semantic = index
 

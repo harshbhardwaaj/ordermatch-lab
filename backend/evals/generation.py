@@ -349,7 +349,7 @@ def generate_eval_run() -> EvalRun:
     sample order (4 orders in the current dataset), not one call per line.
     """
     orders = _load_sample_orders()
-    catalog_items = list(CatalogItem.objects.filter(status="active"))
+    catalog_items = list(CatalogItem.objects.filter(status="active").defer("embedding"))
     discontinued_replacements = _discontinued_replacement_map()
     replacement_skus = set(discontinued_replacements.values())
 

@@ -79,7 +79,7 @@ class Command(BaseCommand):
         CustomerPreference.objects.filter(demo_session_id=SESSION).delete()
         CustomerContextFile.objects.filter(demo_session_id=SESSION).delete()
 
-        catalog = list(CatalogItem.objects.filter(status="active"))
+        catalog = list(CatalogItem.objects.filter(status="active").defer("embedding"))
 
         for scenario in SCENARIOS:
             self._run(scenario, catalog)

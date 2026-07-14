@@ -96,31 +96,82 @@ def embed_texts(texts: list[str]) -> list[list[float]] | None:
 class SemanticIndex:
     """The catalog's vectors as one matrix, plus a cosine search over it.
 
-    Rows are L2-normalized once at construction, which turns cosine similarity
-    into a plain dot product: one matrix-vector multiply for the whole catalog,
-    a few milliseconds, no per-item Python loop.
+    Loaded straight out of the database into numpy and cached for the life of
+    the process, because the memory arithmetic is unforgiving. Measured on the
+    real 10,202-item catalog:
+
+        django, idle                        54 MB
+        + catalog rows carrying embeddings 365 MB   <-- and this per request
+        + both indexes built               436 MB
+
+    against Render's 512 MB. One concurrent request and the process dies. The
+    cost is not the numpy matrix, which is 16 MB; it is holding 10,202 x 384
+    Python floats, which is roughly 300 MB of pointers and boxed objects. So the
+    embeddings are never loaded onto the model instances at all (callers use
+    .defer("embedding")); they come out of the DB as raw values, go straight into
+    one float32 array, and the Python lists are freed immediately.
+
+    Cached because the vectors do not change between deploys: rebuilding this on
+    every order was buying 300 MB of garbage per request to produce a matrix that
+    was byte-identical to the last one.
+
+    Rows are L2-normalized once, which turns cosine similarity into a plain dot
+    product: one matrix-vector multiply for the whole catalog, a few
+    milliseconds, no Python loop.
     """
 
-    def __init__(self, items: list[CatalogItem]):
-        embedded = [(index, item) for index, item in enumerate(items) if item.embedding]
+    _cached: SemanticIndex | None = None
 
-        self.item_indexes = [index for index, _ in embedded]
-        self.available = len(embedded) > 0
+    def __init__(self):
+        total = CatalogItem.objects.exclude(embedding=None).count()
+
+        self.available = total > 0
+        self.row_skus: list[str] = []
 
         if not self.available:
             self.matrix = np.zeros((0, DIMENSIONS), dtype=np.float32)
             return
 
-        matrix = np.asarray([item.embedding for _, item in embedded], dtype=np.float32)
-        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        # Preallocate and fill row by row. Materializing the vectors as a list
+        # first and handing that to np.asarray works, and costs ~240 MB of peak
+        # RSS on a 512 MB box, because for a moment every one of the 3.9 million
+        # floats is a boxed Python object. Streaming them into a preallocated
+        # float32 array means only one chunk is ever alive at a time.
+        self.matrix = np.zeros((total, DIMENSIONS), dtype=np.float32)
+
+        rows = (
+            CatalogItem.objects.exclude(embedding=None)
+            .values_list("sku", "embedding")
+            .iterator(chunk_size=500)
+        )
+        for index, (sku, vector) in enumerate(rows):
+            self.matrix[index] = vector
+            self.row_skus.append(sku)
+
+        norms = np.linalg.norm(self.matrix, axis=1, keepdims=True)
         # An all-zero vector would divide by zero and poison the matrix with
         # NaNs, which then silently rank first. Leave it as zeros: it simply
         # never matches anything.
         norms[norms == 0] = 1.0
-        self.matrix = matrix / norms
+        self.matrix /= norms
 
-    def search(self, query_vector: list[float], limit: int) -> list[tuple[int, float]]:
-        """(index into the original items list, similarity), best first."""
+    @classmethod
+    def load(cls) -> SemanticIndex:
+        if cls._cached is None:
+            cls._cached = cls()
+        return cls._cached
+
+    @classmethod
+    def invalidate(cls) -> None:
+        """After embed_catalog changes the vectors. Only ever needed in a
+        management command or a test; a running web process never mutates them.
+        """
+        cls._cached = None
+
+    def search(self, query_vector: list[float], limit: int) -> list[tuple[str, float]]:
+        """(sku, similarity), best first. SKUs rather than list indexes, because
+        the caller's catalog list is no longer what this was built from.
+        """
         if not self.available:
             return []
 
@@ -131,7 +182,8 @@ class SemanticIndex:
         query = query / norm
 
         scores = self.matrix @ query
-        top = np.argpartition(-scores, min(limit, len(scores) - 1))[:limit]
+        limit = min(limit, len(scores))
+        top = np.argpartition(-scores, limit - 1)[:limit]
         top = top[np.argsort(-scores[top])]
 
-        return [(self.item_indexes[i], float(scores[i])) for i in top]
+        return [(self.row_skus[i], float(scores[i])) for i in top]

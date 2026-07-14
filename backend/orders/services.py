@@ -141,7 +141,11 @@ def create_order_from_pasted_text(pasted_text: str, session_id: str) -> OrderRec
     extracted = extract_order(pasted_text)
 
     setup_config = _active_setup_configuration(session_id)
-    catalog_items = list(CatalogItem.objects.filter(status="active"))
+    # .defer("embedding"): the vectors are 10,202 x 384 floats. Carried on the
+    # model instances they cost ~300 MB of boxed Python objects, per request, on
+    # a 512 MB box. The semantic index reads them straight out of the DB into one
+    # cached numpy array instead (matching.embeddings.SemanticIndex).
+    catalog_items = list(CatalogItem.objects.filter(status="active").defer("embedding"))
     discontinued_replacements = _discontinued_replacement_map()
     replacement_skus = set(discontinued_replacements.values())
 

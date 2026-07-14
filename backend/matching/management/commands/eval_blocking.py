@@ -68,7 +68,7 @@ class Command(BaseCommand):
     help = "Measure blocking recall: how often the correct SKU reaches the shortlist."
 
     def handle(self, *args, **options):
-        catalog = list(CatalogItem.objects.filter(status="active"))
+        catalog = list(CatalogItem.objects.filter(status="active").defer("embedding"))
         lines = [
             {"original_text": query, "description": "", "attributes": []}
             for query, _, _ in CASES
@@ -81,10 +81,9 @@ class Command(BaseCommand):
 
         # Lexical only: same catalog with the vectors hidden, so the semantic
         # half genuinely cannot run rather than merely being ignored.
-        lexical_catalog = list(CatalogItem.objects.filter(status="active"))
-        for item in lexical_catalog:
-            item.embedding = None
-        lexical = build_index(lexical_catalog)
+        # build_index(items) with no line_items never builds the semantic half,
+        # which is exactly what "lexical only" means here.
+        lexical = build_index(catalog)
 
         hybrid = build_index(catalog, lines)
         if hybrid.semantic is None:
