@@ -39,12 +39,15 @@ export function OpeningSection() {
 
           <h1 className="w-full text-[clamp(1.1rem,2.7vw,2.45rem)] font-extrabold leading-[1.14] tracking-normal text-[var(--om-text)]">
             <span className="block">{brand.hero.headlineTop}</span>
+            {brand.hero.headlineMid ? (
+              <span className="mt-3 block">{brand.hero.headlineMid}</span>
+            ) : null}
             <span className="mt-3 block">
               {brand.hero.headlineLead}
               <span className="text-[var(--om-accent)]">
                 {brand.hero.headlineAccent}
               </span>
-              .
+              {brand.hero.headlineTail}
             </span>
           </h1>
 
@@ -71,7 +74,10 @@ export function OpeningSection() {
             <span>Real backend. Real corrections. No signup.</span>
           </div>
 
-          <div className="pointer-events-none absolute bottom-8 right-5 hidden rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]/90 p-3 text-left backdrop-blur sm:right-8 sm:block lg:bottom-16 lg:right-14 [animation:hero-float_4.2s_ease-in-out_infinite]" aria-hidden="true">
+          <div
+            className="pointer-events-none absolute bottom-8 right-5 hidden rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)]/90 p-3 text-left backdrop-blur sm:right-8 sm:block lg:bottom-16 lg:right-14 [animation:hero-float_4.2s_ease-in-out_infinite]"
+            aria-hidden="true"
+          >
             <div className="mb-2 flex items-center justify-between gap-8 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--om-muted)]">
               <span>vogt hydraulik · line 10</span>
               <span className="rounded-full bg-[var(--om-accent-soft)] px-2 py-0.5 text-[var(--om-accent)]">

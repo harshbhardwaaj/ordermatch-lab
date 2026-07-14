@@ -41,10 +41,20 @@ export type Brand = {
   hero: {
     /** Sits above the addressee's logo, so it reads "…, for [their logo]". */
     eyebrow: string;
-    /** Rendered as: headlineTop / headlineLead + <accent>headlineAccent</accent>. */
+    /**
+     * Rendered as up to three lines:
+     *   headlineTop
+     *   headlineMid          (optional)
+     *   headlineLead <accent>headlineAccent</accent> headlineTail
+     *
+     * Punctuation lives in the strings rather than the component, so a brand can
+     * end a line however it wants without the markup deciding for it.
+     */
     headlineTop: string;
+    headlineMid?: string;
     headlineLead: string;
     headlineAccent: string;
+    headlineTail: string;
     subtitle: string;
   };
 
@@ -62,21 +72,24 @@ export type Brand = {
  * framing, because the reader never asked for anything.
  */
 const NEUTRAL: Brand = {
-    id: "neutral",
-    addressee: null,
-    addresseeLogo: null,
-    navTitle: "OrderMatch Lab",
-    navSubtitle: "Prototype by Harsh",
-    hero: {
-      eyebrow: "A prototype by Harsh Bhardwaj",
-      // No "you asked for this" framing: the public reader never asked. The
-      // hook has to be the problem itself, and the honest version of it.
-      headlineTop: "It will get a part wrong.",
-      headlineLead: "Once. Then it ",
-      headlineAccent: "learns",
-      subtitle:
-        "A matcher the user can teach: correct a SKU once, and it stops making that mistake for that customer. Ten thousand parts, the same item sold at four grades, and the discontinued ones still on the page.",
-    },
+  id: "neutral",
+  addressee: null,
+  addresseeLogo: null,
+  navTitle: "OrderMatch Lab",
+  navSubtitle: "Prototype by Harsh",
+  hero: {
+    eyebrow: "A prototype by Harsh Bhardwaj",
+    // Says what the thing IS in the first five words. The public reader has no
+    // context and did not ask for anything, so a clever line lands on nobody:
+    // name the product, then earn it with specifics rather than adjectives.
+    headlineTop: "An AI agent for order matching.",
+    headlineMid: "Messy email in, correct SKU out,",
+    headlineLead: "with ",
+    headlineAccent: "memory and context",
+    headlineTail: " preserved.",
+    subtitle:
+      "Customers write shorthand, a part number, or German. Your catalog has 10,000 SKUs, the same item sold at four grades, and superseded parts still listed. The agent matches every line, shows how confident it is, and sends what it is unsure about to a human. Correct it once, and it stops making that mistake for that customer.",
+  },
   contactHeadline: "Let's talk.",
   metaDescription:
     "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj.",
@@ -92,20 +105,21 @@ const NEUTRAL: Brand = {
  * screen, and their logo is only ever the thing the letter is addressed to.
  */
 const BUILDING_RADAR: Brand = {
-    id: "buildingradar",
-    addressee: "Building Radar",
-    addresseeLogo: "/building-radar-logo.svg",
-    navTitle: "Building Radar",
-    navSubtitle: "Prototype by Harsh",
-    hero: {
-      eyebrow: "A prototype by Harsh Bhardwaj, for",
-      headlineTop: "Twenty minutes wasn't enough.",
-      headlineLead: "So I ",
-      headlineAccent: "finished it",
-      subtitle:
-        "You asked for a matcher the user can teach. Here it is, working: correct it once, and it stops making that mistake for that customer.",
-    },
-    contactHeadline: "Let's talk about Building Radar.",
+  id: "buildingradar",
+  addressee: "Building Radar",
+  addresseeLogo: "/building-radar-logo.svg",
+  navTitle: "Building Radar",
+  navSubtitle: "Prototype by Harsh",
+  hero: {
+    eyebrow: "A prototype by Harsh Bhardwaj, for",
+    headlineTop: "Twenty minutes wasn't enough.",
+    headlineLead: "So I ",
+    headlineAccent: "finished it",
+    headlineTail: ".",
+    subtitle:
+      "You asked for a matcher the user can teach. Here it is, working: correct it once, and it stops making that mistake for that customer.",
+  },
+  contactHeadline: "Let's talk about Building Radar.",
   metaDescription:
     "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
   proofAudience: "Building Radar",
