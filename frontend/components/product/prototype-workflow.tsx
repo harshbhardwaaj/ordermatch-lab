@@ -1,465 +1,234 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, CheckCircle2, FileText, Mail, RotateCcw, UserRound } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowRight,
+  Ban,
+  Brain,
+  ChevronDown,
+  Filter,
+  RotateCcw,
+  Ruler,
+  UserRound,
+} from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
-import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/view-transition-link";
 import { cn } from "@/lib/utils";
 
-const inputItems = [
-  { label: "Email", icon: Mail },
-  { label: "PDF", icon: FileText },
-  { label: "Form", icon: FileText },
-] as const;
-
-const DESKTOP_DIAGRAM_BREAKPOINT_PX = 1024;
-const ARROW_STANDOFF_PX = 6;
-const LOOP_STANDOFF_PX = 8;
-const LABEL_FONT_SIZE_PX = 8.5;
-const LABEL_LETTER_SPACING_PX = 0.7;
-const LABEL_HEIGHT_PX = 18;
-const AFTER_FIX_LABEL_WIDTH_PX = 76;
-const CLEAR_LABEL_WIDTH_PX = 50;
-const NEEDS_REVIEW_LABEL_WIDTH_PX = 50;
-const NEEDS_REVIEW_LABEL_HEIGHT_PX = 28;
-
-type Point = { x: number; y: number };
-
-type ConnectorPoints = {
-  width: number;
-  height: number;
-  orderToAi: { from: Point; to: Point };
-  aiToErp: { from: Point; to: Point };
-  aiToHuman: { from: Point; to: Point };
-  humanToErp: { from: Point; to: Point };
-};
-
-const FlowCard = forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>(
-  function FlowCard({ children, className }, ref) {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)] p-4 shadow-sm",
-          className,
-        )}
-      >
-        {children}
-      </div>
-    );
+/** The pipeline, with the numbers it actually produces. Every figure here is
+ * measured against the real 10,202-item catalog, not illustrative: the
+ * shortlist size, the timings and the token counts all come out of
+ * matching/blocking.py. The argument the page is making is that the expensive
+ * model is the last thing to run, not the first, so the numbers had better be
+ * real. */
+const STAGES = [
+  {
+    id: "block",
+    icon: Filter,
+    kicker: "Step 1",
+    title: "Narrow 10,202 down to 40",
+    cost: "~1 ms · no model · €0",
+    from: "10,202 SKUs",
+    to: "40 candidates",
+    summary:
+      "An inverted index over the catalog. The customer's words are scored against it, rare words counting for most.",
+    detail:
+      "This is the step that makes a big catalog possible at all. Handing 10,202 items to a language model is roughly 907,000 tokens per call, which is past the context limit, not merely expensive. So the model never sees the catalog. It sees forty rows. Rare words carry the signal here: \"m8x40\" appears in a handful of items and tells you almost everything, \"bolt\" appears in thousands and tells you nothing, and weighting by rarity is what encodes that difference. It costs no API call and about a millisecond.",
+    caveat:
+      "The honest weakness: this matches on words. A customer who writes \"Kugellager\" shares no word with \"ball bearing\", so it falls back to a slower fuzzy sweep. Embedding the request is the real fix, and it slots in exactly here.",
   },
-);
+  {
+    id: "rules",
+    icon: Ruler,
+    kicker: "Step 2",
+    title: "Let plain code answer what it can",
+    cost: "~0 ms · no model · €0",
+    from: "40 candidates",
+    to: "most lines resolved",
+    summary:
+      "Part numbers, SKUs, threads, materials and standards are compared directly. If one candidate wins clearly, the line is done.",
+    detail:
+      "If a customer names their own part number, that is not a hint, it is an answer. No model is needed to look it up, and using one would be slower, costlier and less reliable than a dictionary. A line only escalates when the deterministic score is genuinely close, which is exactly the situation a language model is good at and code is not.",
+    caveat: null,
+  },
+  {
+    id: "llm",
+    icon: Brain,
+    kicker: "Step 3",
+    title: "The model only sees what is still ambiguous",
+    cost: "~12.6k tokens · one call per order",
+    from: "the leftovers",
+    to: "ranked candidates + reasons",
+    summary:
+      "Every unresolved line in the order goes in one batched call, along with the customer's context.md.",
+    detail:
+      "One call for the whole order, not one per line: a twenty-line order should not mean twenty round trips. The prompt carries only the union of the shortlists, so it is about 12,600 tokens rather than 907,000, a 98.6% cut. It also carries the brief written about this customer, which is why the model stops proposing the SKU they keep overruling instead of merely being overruled faster.",
+    caveat: null,
+  },
+  {
+    id: "human",
+    icon: UserRound,
+    kicker: "Step 4",
+    title: "A person decides the ones that are genuinely unclear",
+    cost: "the only expensive step",
+    from: "ranked candidates",
+    to: "a decision",
+    summary:
+      "The reviewer sees the top pick, the alternatives, the price of each, and the evidence behind every one.",
+    detail:
+      "\"500x hex bolt M8x40, standard\" legitimately matches fifteen SKUs from 0.06 to 0.27 EUR. No matcher can resolve that, because the information is not in the sentence. It is in the customer's head. So the job is not to guess better, it is to ask well: show the shortlist, show the price, show the reasoning, and make the correction take one click.",
+    caveat: null,
+  },
+  {
+    id: "learn",
+    icon: RotateCcw,
+    kicker: "Step 5",
+    title: "The correction is written down and reused",
+    cost: "flat, forever",
+    from: "a decision",
+    to: "a better step 3",
+    summary:
+      "The decision is logged against that customer. An agent rewrites their brief. The next order reads it.",
+    detail:
+      "Two things are kept, deliberately. The exact wording is pinned to the exact SKU, so an identical request is never re-litigated and costs nothing. And the reason behind it is distilled into a short brief, because a reason generalizes to line items the counters have never seen. The brief is rewritten rather than appended to, so a customer with three hundred corrections costs the same to know as one with three.",
+    caveat: null,
+  },
+];
 
-function MobileArrow() {
+function StageCard({ stage, index }: { stage: (typeof STAGES)[number]; index: number }) {
+  const [open, setOpen] = useState(false);
+  const Icon = stage.icon;
+  const last = index === STAGES.length - 1;
+
   return (
-    <div aria-hidden="true" className="flex justify-center text-[var(--om-accent)] lg:hidden">
-      <ArrowRight className="size-5 rotate-90" />
+    <div className="relative flex gap-4">
+      {/* The spine. It literally connects the steps, so it should be a line. */}
+      <div className="flex flex-col items-center">
+        <span
+          className={cn(
+            "flex size-11 shrink-0 items-center justify-center rounded-xl border",
+            last
+              ? "border-[var(--om-accent)] bg-[var(--om-accent)] text-[var(--om-accent-text)]"
+              : "border-[var(--om-border)] bg-[var(--om-surface)] text-[var(--om-accent)]",
+          )}
+        >
+          <Icon className="size-5" />
+        </span>
+        {!last ? <span className="w-px flex-1 bg-[var(--om-border-strong)]" /> : null}
+      </div>
+
+      <div className="min-w-0 flex-1 pb-8">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--om-subtle)]">
+          {stage.kicker}
+        </p>
+        <h2 className="mt-1 text-[clamp(1.05rem,1.6vw,1.4rem)] font-bold leading-snug text-[var(--om-text)]">
+          {stage.title}
+        </h2>
+
+        {/* from -> to, with the cost. The three things you'd actually ask. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">
+          <span className="rounded-md border border-[var(--om-border)] bg-[var(--om-surface)] px-2 py-1 font-mono text-xs text-[var(--om-muted)]">
+            {stage.from}
+          </span>
+          <ArrowRight className="size-3.5 shrink-0 text-[var(--om-accent)]" />
+          <span className="rounded-md border border-[var(--om-accent)] bg-[var(--om-accent-softer)] px-2 py-1 font-mono text-xs font-semibold text-[var(--om-accent)]">
+            {stage.to}
+          </span>
+          <span className="ml-auto font-mono text-[11px] text-[var(--om-subtle)]">{stage.cost}</span>
+        </div>
+
+        <p className="mt-3 max-w-[68ch] text-sm leading-6 text-[var(--om-muted)]">{stage.summary}</p>
+
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="mt-2 flex items-center gap-1 text-xs font-semibold text-[var(--om-accent)] hover:underline"
+        >
+          {open ? "Less" : "Why it works this way"}
+          <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
+        </button>
+
+        {open ? (
+          <div className="mt-3 max-w-[68ch] rounded-lg border-l-2 border-[var(--om-accent)] bg-[var(--om-surface)] p-4">
+            <p className="text-sm leading-6 text-[var(--om-muted)]">{stage.detail}</p>
+            {stage.caveat ? (
+              <p className="mt-3 flex gap-2 text-sm leading-6 text-[var(--om-muted)]">
+                <Ban className="mt-1 size-3.5 shrink-0 text-amber-600" />
+                <span>{stage.caveat}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function relativeAnchor(el: HTMLElement, containerRect: DOMRect) {
-  const elRect = el.getBoundingClientRect();
-
-  return {
-    left: elRect.left - containerRect.left,
-    right: elRect.right - containerRect.left,
-    top: elRect.top - containerRect.top,
-    bottom: elRect.bottom - containerRect.top,
-    centerX: elRect.left - containerRect.left + elRect.width / 2,
-    centerY: elRect.top - containerRect.top + elRect.height / 2,
-  };
-}
-
-function useWorkflowConnectors(
-  containerRef: React.RefObject<HTMLDivElement | null>,
-  orderRef: React.RefObject<HTMLDivElement | null>,
-  aiRef: React.RefObject<HTMLDivElement | null>,
-  erpRef: React.RefObject<HTMLDivElement | null>,
-  humanRef: React.RefObject<HTMLDivElement | null>,
-) {
-  const [points, setPoints] = useState<ConnectorPoints | null>(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    function measure() {
-      const containerEl = containerRef.current;
-      const orderEl = orderRef.current;
-      const aiEl = aiRef.current;
-      const erpEl = erpRef.current;
-      const humanEl = humanRef.current;
-
-      if (!containerEl || !orderEl || !aiEl || !erpEl || !humanEl) {
-        return;
-      }
-
-      if (window.innerWidth < DESKTOP_DIAGRAM_BREAKPOINT_PX) {
-        setPoints(null);
-        return;
-      }
-
-      const containerRect = containerEl.getBoundingClientRect();
-      const order = relativeAnchor(orderEl, containerRect);
-      const ai = relativeAnchor(aiEl, containerRect);
-      const erp = relativeAnchor(erpEl, containerRect);
-      const human = relativeAnchor(humanEl, containerRect);
-
-      const erpOffsetY = ai.centerY - erp.centerY;
-      const humanOffsetY = human.centerY - ai.centerY;
-      const symmetricOffsetY = (erpOffsetY + humanOffsetY) / 2;
-      const erpTargetY = ai.centerY - symmetricOffsetY;
-      const humanTargetY = ai.centerY + symmetricOffsetY;
-
-      setPoints({
-        width: containerRect.width,
-        height: containerRect.height,
-        orderToAi: {
-          from: { x: order.right + ARROW_STANDOFF_PX, y: order.centerY },
-          to: { x: ai.left - ARROW_STANDOFF_PX, y: ai.centerY },
-        },
-        aiToErp: {
-          from: { x: ai.right + ARROW_STANDOFF_PX, y: ai.centerY },
-          to: { x: erp.left - ARROW_STANDOFF_PX, y: erpTargetY },
-        },
-        aiToHuman: {
-          from: { x: ai.right + ARROW_STANDOFF_PX, y: ai.centerY },
-          to: { x: human.left - ARROW_STANDOFF_PX, y: humanTargetY },
-        },
-        humanToErp: {
-          from: { x: human.centerX, y: human.top - LOOP_STANDOFF_PX },
-          to: { x: erp.centerX, y: erp.bottom + LOOP_STANDOFF_PX },
-        },
-      });
-    }
-
-    measure();
-    const raf = requestAnimationFrame(measure);
-
-    const resizeObserver = new ResizeObserver(measure);
-    resizeObserver.observe(container);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [containerRef, orderRef, aiRef, erpRef, humanRef]);
-
-  return points;
-}
-
-function cubicPointAt(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
-  const mt = 1 - t;
-
-  return {
-    x: mt ** 3 * p0.x + 3 * mt ** 2 * t * p1.x + 3 * mt * t ** 2 * p2.x + t ** 3 * p3.x,
-    y: mt ** 3 * p0.y + 3 * mt ** 2 * t * p1.y + 3 * mt * t ** 2 * p2.y + t ** 3 * p3.y,
-  };
-}
-
-function forkCurve(from: Point, to: Point) {
-  const midX = from.x + (to.x - from.x) / 2;
-  const p1 = { x: midX, y: from.y };
-  const p2 = { x: midX, y: to.y };
-
-  return {
-    d: `M ${from.x} ${from.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${to.x} ${to.y}`,
-    midpoint: cubicPointAt(from, p1, p2, to, 0.5),
-  };
-}
-
-function straightLine(from: Point, to: Point) {
-  return {
-    d: `M ${from.x} ${from.y} L ${to.x} ${to.y}`,
-    midpoint: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-  };
-}
-
-const monoFont = "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)";
-
-function WorkflowConnectors({ points }: { points: ConnectorPoints }) {
-  const orderToAi = forkCurve(points.orderToAi.from, points.orderToAi.to);
-  const clear = forkCurve(points.aiToErp.from, points.aiToErp.to);
-  const needsReview = forkCurve(points.aiToHuman.from, points.aiToHuman.to);
-  const afterFix = straightLine(points.humanToErp.from, points.humanToErp.to);
-  const clearLabelY = clear.midpoint.y - 16;
-  const needsReviewLabelY = needsReview.midpoint.y + 22;
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 hidden lg:block"
-      fill="none"
-      height={points.height}
-      viewBox={`0 0 ${points.width} ${points.height}`}
-      width={points.width}
-    >
-      <defs>
-        <marker
-          id="workflow-arrow"
-          markerHeight="7"
-          markerWidth="7"
-          orient="auto"
-          refX="6"
-          refY="3.5"
-          viewBox="0 0 7 7"
-        >
-          <path d="M0 0 7 3.5 0 7z" fill="var(--om-accent)" />
-        </marker>
-        <marker
-          id="workflow-arrow-muted"
-          markerHeight="7"
-          markerWidth="7"
-          orient="auto"
-          refX="6"
-          refY="3.5"
-          viewBox="0 0 7 7"
-        >
-          <path d="M0 0 7 3.5 0 7z" fill="var(--om-muted)" />
-        </marker>
-      </defs>
-
-      <path
-        d={orderToAi.d}
-        markerEnd="url(#workflow-arrow)"
-        stroke="var(--om-accent)"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d={clear.d}
-        markerEnd="url(#workflow-arrow)"
-        stroke="var(--om-accent)"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d={needsReview.d}
-        markerEnd="url(#workflow-arrow-muted)"
-        stroke="var(--om-muted)"
-        strokeDasharray="7 8"
-        strokeLinecap="round"
-        strokeWidth="1.55"
-      />
-      <path
-        d={afterFix.d}
-        markerEnd="url(#workflow-arrow)"
-        stroke="var(--om-accent)"
-        strokeLinecap="round"
-        strokeWidth="1.6"
-      />
-
-      <rect
-        fill="var(--om-surface)"
-        height={LABEL_HEIGHT_PX}
-        rx={LABEL_HEIGHT_PX / 2}
-        stroke="var(--om-border)"
-        width={CLEAR_LABEL_WIDTH_PX}
-        x={clear.midpoint.x - CLEAR_LABEL_WIDTH_PX / 2}
-        y={clearLabelY - LABEL_HEIGHT_PX / 2}
-      />
-      <text
-        fill="var(--om-accent)"
-        fontFamily={monoFont}
-        fontSize={LABEL_FONT_SIZE_PX}
-        fontWeight="700"
-        letterSpacing={LABEL_LETTER_SPACING_PX}
-        textAnchor="middle"
-        x={clear.midpoint.x}
-        y={clearLabelY + 3}
-      >
-        CLEAR
-      </text>
-
-      <rect
-        fill="var(--om-surface)"
-        height={NEEDS_REVIEW_LABEL_HEIGHT_PX}
-        rx={10}
-        stroke="var(--om-border)"
-        width={NEEDS_REVIEW_LABEL_WIDTH_PX}
-        x={needsReview.midpoint.x - NEEDS_REVIEW_LABEL_WIDTH_PX / 2}
-        y={needsReviewLabelY - NEEDS_REVIEW_LABEL_HEIGHT_PX / 2}
-      />
-      <text
-        fill="var(--om-muted)"
-        fontFamily={monoFont}
-        fontSize={LABEL_FONT_SIZE_PX}
-        fontWeight="700"
-        letterSpacing={LABEL_LETTER_SPACING_PX}
-        textAnchor="middle"
-        x={needsReview.midpoint.x}
-      >
-        <tspan x={needsReview.midpoint.x} y={needsReviewLabelY - 4}>
-          NEEDS
-        </tspan>
-        <tspan x={needsReview.midpoint.x} y={needsReviewLabelY + 7}>
-          REVIEW
-        </tspan>
-      </text>
-
-      <rect
-        fill="var(--om-surface)"
-        height={LABEL_HEIGHT_PX}
-        rx={LABEL_HEIGHT_PX / 2}
-        stroke="var(--om-border)"
-        width={AFTER_FIX_LABEL_WIDTH_PX}
-        x={afterFix.midpoint.x - AFTER_FIX_LABEL_WIDTH_PX / 2}
-        y={afterFix.midpoint.y - LABEL_HEIGHT_PX / 2}
-      />
-      <text
-        fill="var(--om-accent)"
-        fontFamily={monoFont}
-        fontSize={LABEL_FONT_SIZE_PX}
-        fontWeight="700"
-        letterSpacing={LABEL_LETTER_SPACING_PX}
-        textAnchor="middle"
-        x={afterFix.midpoint.x}
-        y={afterFix.midpoint.y + 3}
-      >
-        AFTER FIX
-      </text>
-    </svg>
-  );
-}
-
 export function PrototypeWorkflow() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const orderRef = useRef<HTMLDivElement>(null);
-  const aiRef = useRef<HTMLDivElement>(null);
-  const erpRef = useRef<HTMLDivElement>(null);
-  const humanRef = useRef<HTMLDivElement>(null);
-
-  const points = useWorkflowConnectors(containerRef, orderRef, aiRef, erpRef, humanRef);
-
   return (
     <AppShell>
-      <main
-        id="main"
-        className="mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col px-6 py-10 text-[var(--om-text)] sm:px-10 lg:px-16"
-      >
-        <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-8">
-          <div className="max-w-5xl">
-            <p className="font-mono text-sm font-bold uppercase tracking-[0.2em] text-[var(--om-accent)] sm:text-base">
-              The workflow
-            </p>
-            <h1 className="mt-4 text-2xl font-extrabold leading-tight tracking-normal text-[var(--om-text)] sm:text-3xl">
-              Most orders never need a person.
-            </h1>
-            <p className="mt-3 max-w-4xl text-xs leading-5 text-[var(--om-muted)] sm:text-sm">
-              Turn a messy customer order into a checked order path: read it, match it,
-              show confidence, and send uncertain details to a person.
-            </p>
-          </div>
+      <main id="main" className="w-full px-[5vw] py-12 text-[var(--om-text)]">
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[var(--om-accent)]">
+          How I solved it
+        </p>
+        <h1 className="mt-3 text-[clamp(1.6rem,3.2vw,2.8rem)] font-extrabold leading-[1.14]">
+          The expensive part runs last.
+        </h1>
+        <p className="mt-3 max-w-[70ch] text-[clamp(1rem,1.3vw,1.2rem)] leading-relaxed text-[var(--om-muted)]">
+          You liked that the first build used the model only where it earned its keep. A
+          ten-thousand item catalog makes that a requirement rather than a preference: the whole
+          catalog in a prompt is about 907,000 tokens, so the model has to be the last thing that
+          runs, not the first.
+        </p>
 
-          <div
-            ref={containerRef}
-            className="relative grid items-center gap-4 lg:grid-cols-[0.62fr_0.72fr_0.85fr] lg:gap-x-20 lg:gap-y-3"
-          >
-            {points ? <WorkflowConnectors points={points} /> : null}
-
-            <FlowCard ref={orderRef} className="relative z-10 lg:row-span-2">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[var(--om-muted)]">
-                Order comes in
-              </p>
-              <div className="mt-2.5 grid gap-2">
-                {inputItems.map((item) => {
-                  const ItemIcon = item.icon;
-
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex items-center gap-2.5 text-sm font-semibold text-[var(--om-text)]"
-                    >
-                      <ItemIcon aria-hidden="true" className="size-4 text-[var(--om-muted)]" />
-                      <span>{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </FlowCard>
-
-            <MobileArrow />
-
-            <FlowCard
-              ref={aiRef}
-              className="relative z-10 border-[var(--om-accent)] bg-[var(--om-accent-soft)]/45 p-3.5 shadow-[0_16px_42px_rgba(var(--om-accent-rgb),0.12)] lg:row-span-2"
+        {/* The headline number. It is the argument, so it goes above the fold. */}
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          {[
+            { value: "10,202", label: "SKUs in the catalog" },
+            { value: "40", label: "the model ever sees" },
+            { value: "98.6%", label: "fewer tokens per call" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-[var(--om-border)] bg-[var(--om-surface)] p-5"
             >
-              <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-[var(--om-accent)] text-[var(--om-accent-text)]">
-                  <BrandMark className="size-6" />
-                </span>
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[var(--om-accent)]">
-                  AI-assisted review
-                </p>
-              </div>
-              <p className="mt-2 text-sm font-bold leading-5 text-[var(--om-text)]">
-                Read the order, match products, and show confidence before anything moves on.
+              <p className="text-[clamp(1.6rem,2.6vw,2.2rem)] font-extrabold leading-none text-[var(--om-accent)]">
+                {stat.value}
               </p>
-            </FlowCard>
-
-            <MobileArrow />
-
-            <p className="text-center font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--om-subtle)] lg:hidden">
-              Splits into two outcomes, based on confidence
-            </p>
-
-            <div className="relative z-10 grid gap-4 lg:gap-16">
-              <FlowCard ref={erpRef} className="border-[var(--om-accent)]">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 aria-hidden="true" className="size-5 text-[var(--om-accent)]" />
-                  <div>
-                    <h2 className="text-base font-extrabold text-[var(--om-accent)]">
-                      Ready for ERP
-                    </h2>
-                    <p className="mt-1 text-sm font-medium text-[var(--om-muted)]">
-                      When the details are clear.
-                    </p>
-                  </div>
-                </div>
-              </FlowCard>
-
-              <FlowCard ref={humanRef} className="border-dashed border-[var(--om-border-strong)] bg-[var(--om-bg)]">
-                <div className="flex items-center gap-3">
-                  <UserRound aria-hidden="true" className="size-5 text-[var(--om-muted)]" />
-                  <div>
-                    <h2 className="text-base font-extrabold text-[var(--om-text)]">
-                      Human reviews
-                    </h2>
-                    <p className="mt-1 text-sm font-medium text-[var(--om-muted)]">
-                      When the prototype is unsure.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-2 rounded-lg border border-[var(--om-border)] bg-[var(--om-surface)] px-3 py-2 text-xs font-semibold text-[var(--om-muted)]">
-                  <RotateCcw aria-hidden="true" className="size-4 text-[var(--om-accent)]" />
-                  <span>Review fixes the detail, then the order can move to ERP.</span>
-                </div>
-              </FlowCard>
+              <p className="mt-2 text-sm text-[var(--om-muted)]">{stat.label}</p>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="flex flex-col items-start">
-            <Button
-              asChild
-              size="lg"
-              className="h-12 w-full bg-[var(--om-accent)] px-8 text-base text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)] sm:w-auto"
-            >
-              <TransitionLink href="/prototype/start">
-                Experience it yourself
-                <ArrowRight aria-hidden="true" />
-              </TransitionLink>
-            </Button>
-          </div>
-        </section>
+        <div className="mt-12 flex flex-col">
+          {STAGES.map((stage, index) => (
+            <StageCard key={stage.id} stage={stage} index={index} />
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[var(--om-accent)] bg-[var(--om-accent-softer)] p-6">
+          <p className="text-[clamp(1.05rem,1.6vw,1.35rem)] font-bold leading-snug text-[var(--om-text)]">
+            Step 5 feeds step 3. That loop is the whole product.
+          </p>
+          <p className="mt-2 max-w-[65ch] text-sm leading-6 text-[var(--om-muted)]">
+            Everything above it is plumbing that keeps the loop cheap enough to run on a real
+            catalog. The reviewer was always going to fix the bad matches. The only question was
+            whether anything was listening.
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="mt-5 bg-[var(--om-accent)] px-6 text-sm text-[var(--om-accent-text)] hover:bg-[var(--om-accent-hover)]"
+          >
+            <TransitionLink href="/prototype/start">
+              Try it, then teach it
+              <ArrowRight aria-hidden="true" />
+            </TransitionLink>
+          </Button>
+        </div>
       </main>
     </AppShell>
   );
