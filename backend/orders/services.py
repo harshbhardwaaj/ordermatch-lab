@@ -122,6 +122,22 @@ def _is_confidently_ahead(candidates) -> bool:
     """
     if len(candidates) <= 1:
         return True
+
+    # A pin is not a score, it is a human verdict, and the margin must not
+    # overrule it. This exact request was corrected to this exact SKU by a
+    # reviewer and never overruled since (matching.memory.apply_memory).
+    #
+    # Without this the learning loop stops one step short of the thing it
+    # promises. The ambiguity that made the line hard in the first place —
+    # four near-identical grades of the same bolt — is still there on the
+    # reorder, so the runner-up still scores within the margin, so the line
+    # is still sent to review. The reviewer is asked a question they have
+    # already answered, and the answer is sitting right there at the top of
+    # the list, labelled as theirs. It leans, but it never quite learns.
+    top = candidates[0]
+    if (getattr(top, "learned_signal", None) or {}).get("pinned"):
+        return True
+
     return (candidates[0].score - candidates[1].score) >= CONFIDENT_MARGIN
 
 
