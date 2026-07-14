@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import { BackendWarmup } from "@/components/backend-warmup";
+import { brand } from "@/lib/brand";
 
 const shellStateScript = `
   try {
@@ -26,8 +27,9 @@ export const metadata: Metadata = {
   // that gets truncated to "OrderMatch Lab — a protot..." communicates nothing
   // that the first two words did not.
   title: "OrderMatch",
-  description:
-    "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
+  // Per brand: the addressed build says who it was written for, the public one
+  // does not name a company it was not written for (lib/brand.ts).
+  description: brand.metaDescription,
 };
 
 export const viewport: Viewport = {
@@ -42,7 +44,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // data-brand drives the palette (app/globals.css). Server-rendered rather
+    // than set by a script, because the brand is fixed at build time and a
+    // client-side swap would show the wrong colours for a frame.
+    <html lang="en" data-brand={brand.id} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: shellStateScript }} />
       </head>

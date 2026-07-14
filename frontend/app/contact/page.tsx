@@ -1,6 +1,7 @@
 import { Calendar, Github, Linkedin, Phone } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { brand } from "@/lib/brand";
 import { CopyEmailLink } from "@/components/narrative/copy-email-link";
 import { PRIMARY_CONTACT_CARD_CLASS, PRIMARY_CONTACT_ICON_CLASS } from "@/lib/contact-card-styles";
 
@@ -34,7 +35,7 @@ export default function ContactPage() {
           Get in touch
         </p>
         <h1 className="mt-4 text-3xl font-extrabold leading-tight text-[var(--om-text)] sm:text-4xl">
-          Let&apos;s talk about Building Radar.
+          {brand.contactHeadline}
         </h1>
         <p className="mt-3 text-base leading-7 text-[var(--om-muted)]">
           Book a call, email, or call directly, whichever is easiest.

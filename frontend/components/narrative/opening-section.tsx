@@ -1,5 +1,6 @@
 import { TransitionLink } from "@/components/view-transition-link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { brand } from "@/lib/brand";
 import { icons } from "@/lib/icons";
 
 export function OpeningSection() {
@@ -15,35 +16,40 @@ export function OpeningSection() {
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-screen-xl items-center justify-center px-5 py-12 text-center sm:px-8 lg:px-12">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center text-center">
-          {/* Authorship first, and unmissable: this is Harsh's prototype built
-              for Building Radar, not a Building Radar page. Their mark appears
-              as the addressee, never as the byline. */}
+          {/* Authorship first, and unmissable: this is Harsh's prototype. On an
+              addressed build the client's mark appears directly below, as the
+              addressee, never as the byline. On the public build there is no
+              addressee, so there is no logo to show and nothing to imply. */}
           <div className="mb-8 flex flex-col items-center gap-3">
             <p className="inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--om-muted)] sm:text-xs">
               <span className="size-1.5 rounded-full bg-[var(--om-accent)]" />
-              A prototype by Harsh Bhardwaj, for
+              {brand.hero.eyebrow}
             </p>
-            <span className="rounded-lg bg-white px-4 py-2 shadow-sm ring-1 ring-[var(--om-border)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/building-radar-logo.svg"
-                alt="Building Radar"
-                className="h-5 w-auto sm:h-6"
-              />
-            </span>
+            {brand.addresseeLogo ? (
+              <span className="rounded-lg bg-white px-4 py-2 shadow-sm ring-1 ring-[var(--om-border)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brand.addresseeLogo}
+                  alt={brand.addressee ?? ""}
+                  className="h-5 w-auto sm:h-6"
+                />
+              </span>
+            ) : null}
           </div>
 
           <h1 className="w-full text-[clamp(1.1rem,2.7vw,2.45rem)] font-extrabold leading-[1.14] tracking-normal text-[var(--om-text)]">
-            <span className="block">Twenty minutes wasn&apos;t enough.</span>
+            <span className="block">{brand.hero.headlineTop}</span>
             <span className="mt-3 block">
-              So I{" "}
-              <span className="text-[var(--om-accent)]">finished it</span>.
+              {brand.hero.headlineLead}
+              <span className="text-[var(--om-accent)]">
+                {brand.hero.headlineAccent}
+              </span>
+              .
             </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-[var(--om-muted)] sm:text-lg">
-            You asked for a matcher the user can teach. Here it is, working: correct it once,
-            and it stops making that mistake for that customer.
+            {brand.hero.subtitle}
           </p>
 
           <div className="relative mt-10 inline-flex items-center justify-center sm:mt-14">

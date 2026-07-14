@@ -1,6 +1,46 @@
+import { brand } from "@/lib/brand";
+
 type BrandMarkProps = {
   className?: string;
 };
+
+/** The mark for whichever brand this build was made for.
+ *
+ * Switched on the raw env var rather than on brand.id so the comparison folds
+ * at build time and the unused glyph is dropped from the bundle: a client's
+ * artwork should not be sitting in the public site's JavaScript, even unused.
+ * See the note in lib/brand.ts.
+ */
+export function BrandMark({ className }: BrandMarkProps) {
+  if (process.env.NEXT_PUBLIC_BRAND === "buildingradar") {
+    return <BuildingRadarMark className={className} />;
+  }
+  return <NeutralMark className={className} />;
+}
+
+/** The public build's own mark: two carets closing on a single point, which is
+ * what the product does — many ways of writing a part, one SKU. Owes nothing to
+ * anyone else's brand, and is painted from theme tokens so it works on both
+ * palettes and both themes.
+ */
+export function NeutralMark({ className }: BrandMarkProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="var(--om-accent)"
+      strokeWidth="4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 10 L20 24 L6 38" />
+      <path d="M42 10 L28 24 L42 38" />
+      <circle cx="24" cy="24" r="2.6" fill="var(--om-accent)" stroke="none" />
+    </svg>
+  );
+}
 
 /** Building Radar's glyph, lifted from their own logo (the red "Zeichen" path;
  * the wordmark beside it is the other half of that file). Used wherever a
@@ -8,9 +48,10 @@ type BrandMarkProps = {
  *
  * It carries their brand, so the app never presents itself AS Building Radar:
  * the chrome always pairs it with this prototype's own name and Harsh's byline
- * (see app-shell.tsx). Their mark is the addressee, not the author.
+ * (see app-shell.tsx). Their mark is the addressee, not the author. It renders
+ * only on the build addressed to them (see BrandMark above).
  */
-export function BrandMark({ className }: BrandMarkProps) {
+export function BuildingRadarMark({ className }: BrandMarkProps) {
   return (
     <svg aria-hidden="true" className={className} viewBox="28 52 232 218" fill="none">
       <path

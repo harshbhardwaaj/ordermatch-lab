@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TransitionLink } from "@/components/view-transition-link";
+import { brand } from "@/lib/brand";
 import { icons } from "@/lib/icons";
 import { THESIS_STEPS } from "@/lib/thesis-nav";
 import { cn } from "@/lib/utils";
@@ -157,12 +158,13 @@ export function AppShell({
               aria-label="OrderMatch Lab home"
               className="flex h-12 items-center gap-4 rounded-full text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--om-accent)]"
             >
-              {/* One mark, the same at both widths: Building Radar's glyph. The
-                  wordmark read as cramped next to it and already contains the
-                  glyph anyway, so it was drawing the same shape twice. The
-                  byline appears beside it when there is room, so authorship
-                  still travels with the chrome and the app is never mistaken
-                  for a Building Radar property. */}
+              {/* One mark, the same at both widths (BrandMark picks the right
+                  one for this build). On the addressed build the wordmark read
+                  as cramped next to the glyph and already contains it anyway,
+                  so it was drawing the same shape twice. The byline appears
+                  beside it when there is room, so authorship always travels
+                  with the chrome and the app is never mistaken for a property
+                  of the company it is addressed to. */}
               <span className="flex size-12 shrink-0 items-center justify-center">
                 <BrandMark className="size-9" />
               </span>
@@ -173,10 +175,10 @@ export function AppShell({
                 )}
               >
                 <span className="text-sm font-bold leading-5 text-[var(--om-text)]">
-                  Building Radar
+                  {brand.navTitle}
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--om-muted)]">
-                  Prototype by Harsh
+                  {brand.navSubtitle}
                 </span>
               </span>
             </TransitionLink>
@@ -315,7 +317,7 @@ export function AppShell({
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl text-sm font-semibold marker:hidden">
               <span className="flex items-center gap-2">
                 <BrandMark className="size-6 shrink-0" />
-                Building Radar
+                {brand.navTitle}
               </span>
               <span className="flex items-center gap-2">
                 <ThemeToggle className="size-9" />

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink, Github } from "lucide-react";
+import { brand } from "@/lib/brand";
 
 import { AppShell } from "@/components/app-shell";
 import { BrandMark } from "@/components/brand-mark";
@@ -55,7 +56,7 @@ const CARDS: ProofCard[] = [
       "Claude is used only for the qualitative sections.",
     ],
     mapping:
-      "Relevant here because Building Radar needs builders who can connect UI, business logic, and a real deployment, and who know which parts of a system a language model should and should not touch.",
+      `Relevant here because ${brand.proofAudience} needs builders who can connect UI, business logic, and a real deployment, and who know which parts of a system a language model should and should not touch.`,
     links: [
       { state: "live", label: "View live tool", href: "https://ai-investment-analyst-harsh.vercel.app", icon: "external" },
       { state: "live", label: "View code", href: "https://github.com/harshbhardwaaj/ai-investment-analyst", icon: "github" },
