@@ -29,4 +29,4 @@ npm run build
 
 v0.x is the frontend-first product and story surface. It can use grounded synthetic data and prototype interactions, but it must stay honest about what is sample, simulated, or future API-backed behavior.
 
-v1.0 is the send-ready version. It should be polished, deployed, backend-backed where credibility depends on it, and safe to share with Comena without implying private access to their systems or data.
+v1.0 is the send-ready version. It should be polished, deployed, backend-backed where credibility depends on it, and safe to share without implying private access to anyone's systems or data.

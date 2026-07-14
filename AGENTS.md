@@ -15,15 +15,11 @@ Small factual answers, status checks, and explicitly requested terminal-only act
 
 Use the `spec-kit` workflow for substantial project work, especially when the user says things like "spec this", "spec-driven", "let's spec this out", "plan this properly", or "I want to build X".
 
-Spec Kit artifacts live in `docs/spec-kit/`. Before continuing any spec-driven planning, read the existing artifacts there so new work stays aligned with the specification and plan.
-
-## Product Story Context
-
-Before planning, designing, or implementing the app, read `docs/product-story-brief.md`. This project is a candidate pitch plus interactive product prototype for Comena, not just a standalone SaaS demo.
+Spec Kit artifacts are kept locally (outside the repo). Before continuing any spec-driven planning, read the existing artifacts there so new work stays aligned with the specification and plan.
 
 ## UX Product Playbook
 
-Before designing or building UI for this project, read `docs/ux-product-playbook.md` and apply it. The app should handle loading, success, error, empty, and partial states intentionally, not only the happy path.
+The app should handle loading, success, error, empty, and partial states intentionally, not only the happy path.
 
 ## Git Authorship
 
