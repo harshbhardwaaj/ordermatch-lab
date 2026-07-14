@@ -69,6 +69,35 @@ def _attribute_lookup(catalog_item: CatalogItem) -> dict[str, str]:
     return {_norm(a.get("name", "")): _norm(a.get("value", "")) for a in catalog_item.attributes}
 
 
+def _values_agree(order_value: str, catalog_value: str) -> bool:
+    """Whether a customer's attribute value means the same as the catalog's,
+    allowing for the two describing the same thing in different words.
+
+    Exact string equality was wrong, and wrong in the direction that hurts: it
+    read "40" vs "40 mm", "A2" vs "a2 stainless steel", and "ISO4017" vs
+    "iso 4017" as three *conflicts*, when every one of them is agreement. Those
+    phantom conflicts tanked the match score and, on a line where the customer
+    had named the exact SKU, forced it to a human — the same order matching or
+    not depending on whether extraction happened to phrase an attribute the
+    catalog's way.
+
+    Deliberately conservative, because a false *agreement* auto-approves a wrong
+    part, which is worse than a false conflict. Two values agree when:
+      - they are equal once inner spaces are removed ("iso 4017" == "iso4017"), or
+      - the customer's value is a whole-token subset of the catalog's
+        ("a2" within {a2, stainless, steel}; "40" within {40, mm}).
+    Nothing looser: no substring test, so "40" never agrees with "400 mm" and
+    "m8" never agrees with "m80".
+    """
+    if order_value == catalog_value:
+        return True
+    if order_value.replace(" ", "") == catalog_value.replace(" ", ""):
+        return True
+    order_tokens = set(order_value.split())
+    catalog_tokens = set(catalog_value.split())
+    return bool(order_tokens) and order_tokens <= catalog_tokens
+
+
 def _proof_kind_for_attribute(name: str) -> str:
     key = _norm(name)
     if key in _SIZE_ATTRIBUTE_NAMES:
@@ -103,13 +132,27 @@ def _deterministic_score(extracted: dict, catalog_item: CatalogItem) -> tuple[fl
         )
 
     requested_sku = _norm(extracted.get("requested_sku"))
-    if requested_sku and requested_sku == _norm(catalog_item.sku):
+    catalog_sku = _norm(catalog_item.sku)
+    # The extractor usually routes a stated SKU into requested_sku, but it is an
+    # LLM and occasionally drops it into original_text and nowhere else. A SKU is
+    # a distinctive token that does not occur by accident, so recovering it from
+    # the raw line — as a whole token, never a substring — makes the strongest
+    # signal a customer can give deterministic rather than dependent on the
+    # extractor's mood. original_text is kept verbatim for exactly this kind of
+    # ground-truth recovery.
+    exact_sku_match = bool(requested_sku and requested_sku == catalog_sku)
+    if not exact_sku_match and catalog_sku:
+        raw_tokens = set(_norm(extracted.get("original_text")).split())
+        exact_sku_match = catalog_sku in raw_tokens
+    if exact_sku_match:
         score += 45
         proof_items.append(
             {
                 "kind": "catalog-attribute",
                 "label": "Requested SKU matches catalog SKU",
-                "sourceValue": extracted["requested_sku"],
+                # requested_sku when the extractor captured it, else the SKU as
+                # the customer wrote it in the raw line (recovery path above).
+                "sourceValue": extracted.get("requested_sku") or catalog_item.sku,
                 "catalogValue": catalog_item.sku,
                 "supportsMatch": True,
             }
@@ -124,7 +167,7 @@ def _deterministic_score(extracted: dict, catalog_item: CatalogItem) -> tuple[fl
         catalog_value = catalog_attrs.get(_norm(name))
         if not value or catalog_value is None:
             continue
-        if catalog_value == value:
+        if _values_agree(value, catalog_value):
             matched_attrs += 1
             proof_items.append(
                 {
@@ -156,6 +199,25 @@ def _deterministic_score(extracted: dict, catalog_item: CatalogItem) -> tuple[fl
                     "supportsMatch": True,
                 }
             )
+
+    # An exact SKU match is an identifier match: the customer named the one
+    # catalog row they want, and it exists. That is the most authoritative signal
+    # there is, stronger than any bundle of attribute matches, so it must be
+    # dispositive on its own rather than needing the description to happen to
+    # carry enough corroborating attributes.
+    #
+    # Without this floor the routing was non-deterministic: the same "100x
+    # OM-FAS-HB-M8X40-A2-ISO4017" auto-matched when extraction pulled the size,
+    # grade and standard out of the SKU string (pushing the score past the
+    # threshold) and went to review when it did not. Same order, different
+    # outcome, decided by an incidental of LLM extraction.
+    #
+    # The one exception is a stated attribute that *contradicts* the SKU ("SKU X,
+    # but in A4" when X is the A2 row): that lands in missing_evidence, and a
+    # genuine conflict has to reach a human rather than be auto-approved on the
+    # identifier alone.
+    if exact_sku_match and not missing_evidence:
+        score = max(score, CONFIDENT_SCORE + 4)
 
     return min(score, 100.0), proof_items, missing_evidence
 

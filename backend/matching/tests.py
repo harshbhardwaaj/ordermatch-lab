@@ -663,3 +663,108 @@ class PinnedLineAutoMatchTests(TestCase):
 
         self.assertFalse(_is_confidently_ahead([FakeCandidate(88.0), FakeCandidate(87.0)]))
         self.assertTrue(_is_confidently_ahead([FakeCandidate(95.0), FakeCandidate(60.0)]))
+
+
+class ExactSkuAndAttributeMatchTests(TestCase):
+    """Two bugs found by running the same order many times and watching the
+    routing flip. Both made an exactly-stated SKU — the strongest signal a
+    customer can give — resolve non-deterministically.
+    """
+
+    def setUp(self):
+        self.item = make_catalog_item(
+            "cat-sku",
+            "OM-FAS-HB-M8X40-A2-ISO4017",
+            "Hex bolt M8x40 A2 ISO 4017",
+            attributes=[
+                {"name": "length", "value": "40 mm"},
+                {"name": "material", "value": "A2 stainless steel"},
+                {"name": "standard", "value": "ISO 4017"},
+            ],
+        )
+
+    def test_values_agree_treats_shorthand_as_agreement_not_conflict(self):
+        from matching.pipeline import _values_agree
+
+        # These are agreement, and exact equality wrongly called them conflicts.
+        self.assertTrue(_values_agree("40", "40 mm"))
+        self.assertTrue(_values_agree("a2", "a2 stainless steel"))
+        self.assertTrue(_values_agree("iso4017", "iso 4017"))
+        # These are genuine conflicts and must stay conflicts.
+        self.assertFalse(_values_agree("a4", "a2 stainless steel"))
+        self.assertFalse(_values_agree("40", "400 mm"))
+        self.assertFalse(_values_agree("m8", "m80"))
+
+    def test_an_exact_sku_auto_matches_regardless_of_attribute_phrasing(self):
+        from matching.pipeline import _deterministic_candidates, _is_confident
+
+        # The customer named the SKU and described it in their own shorthand.
+        extracted = {
+            "requested_sku": "OM-FAS-HB-M8X40-A2-ISO4017",
+            "original_text": "100x OM-FAS-HB-M8X40-A2-ISO4017",
+            "customer_part_number": None,
+            "description": "",
+            "attributes": [
+                {"name": "length", "value": "40"},
+                {"name": "material", "value": "A2"},
+                {"name": "standard", "value": "ISO4017"},
+            ],
+        }
+        candidates = _deterministic_candidates(extracted, [self.item])
+        self.assertEqual(candidates[0].catalog_item.sku, "OM-FAS-HB-M8X40-A2-ISO4017")
+        self.assertGreaterEqual(candidates[0].score, 92)
+        self.assertTrue(_is_confident(candidates))
+        self.assertEqual(candidates[0].missing_evidence, [])
+
+    def test_an_exact_sku_dropped_by_the_extractor_is_recovered_from_raw_text(self):
+        """The extractor occasionally fails to route the SKU into requested_sku.
+        A SKU is a distinctive whole token, so it is recovered from the raw line
+        rather than left to the extractor's variance."""
+        from matching.pipeline import _deterministic_candidates, _is_confident
+
+        extracted = {
+            "requested_sku": None,  # the extractor dropped it
+            "original_text": "100x OM-FAS-HB-M8X40-A2-ISO4017",
+            "customer_part_number": None,
+            "description": "",
+            "attributes": [],
+        }
+        candidates = _deterministic_candidates(extracted, [self.item])
+        self.assertEqual(candidates[0].catalog_item.sku, "OM-FAS-HB-M8X40-A2-ISO4017")
+        self.assertTrue(_is_confident(candidates))
+
+    def test_a_stated_sku_with_a_conflicting_attribute_still_asks(self):
+        """The safety valve: 'SKU X but in A4' when X is the A2 row is a real
+        contradiction and must reach a human, not auto-approve on the SKU."""
+        from matching.pipeline import _deterministic_candidates, _is_confident
+
+        extracted = {
+            "requested_sku": "OM-FAS-HB-M8X40-A2-ISO4017",
+            "original_text": "100x OM-FAS-HB-M8X40-A2-ISO4017 but A4",
+            "customer_part_number": None,
+            "description": "",
+            "attributes": [{"name": "material", "value": "A4"}],
+        }
+        candidates = _deterministic_candidates(extracted, [self.item])
+        self.assertFalse(_is_confident(candidates))
+        self.assertTrue(candidates[0].missing_evidence)
+
+    def test_a_sku_is_recovered_only_as_a_whole_token_never_a_substring(self):
+        """Recovery must not fire on a SKU that is merely a substring of some
+        other text, or a longer code containing this SKU would false-match."""
+        from matching.pipeline import _deterministic_candidates
+
+        extracted = {
+            "requested_sku": None,
+            "original_text": "100x OM-FAS-HB-M8X40-A2-ISO4017-EXTENDED-VARIANT",
+            "customer_part_number": None,
+            "description": "",
+            "attributes": [],
+        }
+        candidates = _deterministic_candidates(extracted, [self.item])
+        top = candidates[0] if candidates else None
+        # The exact SKU is not a standalone token here, so no exact-match proof.
+        if top:
+            self.assertFalse(
+                any(p.get("label") == "Requested SKU matches catalog SKU" for p in top.proof_items)
+            )
