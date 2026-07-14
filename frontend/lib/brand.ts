@@ -63,6 +63,11 @@ export type Brand = {
 
   /** Fills "Relevant here because ___ needs builders who…" on the proof page. */
   proofAudience: string;
+
+  /** Eyebrow above the problem statement. The addressed build can say "the
+   *  problem you gave me", because they did. A stranger on a public link gave
+   *  nobody anything, and copy that talks past its reader is worse than plain. */
+  problemEyebrow: string;
 };
 
 /**
@@ -94,6 +99,7 @@ const NEUTRAL: Brand = {
   metaDescription:
     "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj.",
   proofAudience: "this kind of product",
+  problemEyebrow: "The problem",
 };
 
 /**
@@ -123,6 +129,7 @@ const BUILDING_RADAR: Brand = {
   metaDescription:
     "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
   proofAudience: "Building Radar",
+  problemEyebrow: "The problem you gave me",
 };
 
 /**

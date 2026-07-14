@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { brand } from "@/lib/brand";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,8 @@ const DIFFICULTIES = [
   {
     stat: "One job, many grades",
     label: "zinc / A2 / A4",
-    detail: "The same bolt. Tougher metal, higher price. Which one did they mean?",
+    detail:
+      "The same bolt. Tougher metal, higher price. Which one did they mean?",
   },
   {
     stat: "Old parts, still listed",
@@ -39,7 +41,7 @@ export function PrototypeOrientation() {
       >
         <section className="flex w-full flex-col gap-8">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[var(--om-accent)] sm:text-sm">
-            The problem you gave me
+            {brand.problemEyebrow}
           </p>
 
           <div className="space-y-2">
@@ -66,21 +68,22 @@ export function PrototypeOrientation() {
                 <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--om-accent)]">
                   {card.label}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[var(--om-muted)]">{card.detail}</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--om-muted)]">
+                  {card.detail}
+                </p>
               </div>
             ))}
           </div>
 
           <div className="space-y-2">
             <p className="text-[clamp(1rem,1.35vw,1.3rem)] leading-relaxed text-[var(--om-muted)]">
-              No matcher gets this right the first time. It doesn&apos;t have to. Someone is
-              already sitting there fixing it.
+              No matcher gets this right the first time. It doesn&apos;t have
+              to. Someone is already sitting there fixing it.
             </p>
             <p className="text-[clamp(1.15rem,1.7vw,1.65rem)] font-bold leading-snug text-[var(--om-text)]">
               The only question that matters is whether it remembers the fix.
             </p>
           </div>
-
 
           <Button
             asChild

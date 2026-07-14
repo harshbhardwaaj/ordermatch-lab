@@ -15,7 +15,7 @@ export function OpeningSection() {
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-screen-xl items-center justify-center px-5 py-12 text-center sm:px-8 lg:px-12">
-        <div className="mx-auto flex w-full max-w-4xl flex-col items-center text-center">
+        <div className="measure-wide mx-auto flex flex-col items-center text-center">
           {/* Authorship first, and unmissable: this is Harsh's prototype. On an
               addressed build the client's mark appears directly below, as the
               addressee, never as the byline. On the public build there is no
@@ -51,7 +51,7 @@ export function OpeningSection() {
             </span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-[var(--om-muted)] sm:text-lg">
+          <p className="measure mt-6 text-pretty text-base leading-relaxed text-[var(--om-muted)] sm:text-lg">
             {brand.hero.subtitle}
           </p>
 

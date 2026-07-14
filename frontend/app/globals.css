@@ -152,6 +152,41 @@
   @apply border-border;
 }
 
+/* ---------------------------------------------------------------------------
+ * Measures.
+ *
+ * Reach for these instead of hardcoding max-w-xl / max-w-2xl / max-w-4xl on
+ * every block. A fixed rem cap is a guess about one screen: on a 14" laptop it
+ * looks fine, and on a 27" monitor it is a narrow ribbon of text stranded in
+ * the middle of the page with dead space either side.
+ *
+ * These scale with the viewport but stop at a readable line length, because the
+ * cap that actually matters is characters per line, not pixels. Prose past
+ * ~75ch gets hard to track back to the start of the next line, so growing
+ * forever is not the answer either.
+ *
+ * Pick by content, not by feel:
+ *   .measure       body copy, paragraphs, anything read left to right
+ *   .measure-wide  headlines, subheads, short lines that can run longer
+ *   .measure-full  cards, tables, grids: things laid out, not read
+ * ------------------------------------------------------------------------ */
+.measure {
+  width: 100%;
+  max-width: min(100%, 68ch);
+}
+
+.measure-wide {
+  width: 100%;
+  max-width: min(100%, 88ch);
+}
+
+.measure-full {
+  width: 100%;
+  /* Wide enough to use a big monitor, capped so a 32" screen does not stretch a
+   * three-column grid into something you have to turn your head to read. */
+  max-width: min(100%, 96rem);
+}
+
 html {
   min-width: 320px;
   scroll-behavior: smooth;
