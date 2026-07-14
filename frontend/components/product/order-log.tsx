@@ -121,8 +121,15 @@ export function OrderLog() {
 
             {confirmingReset ? (
               <div className="flex flex-wrap items-center gap-2 text-xs">
+                {/* This is a shared workspace now (see the backend's
+                    SHARED_DEMO_SESSION_ID): a reset is not personal, it wipes
+                    everyone's orders and everything the matcher has been
+                    taught. The old copy said "every order you've tried", which
+                    is no longer true and would have made this look far safer
+                    than it is. */}
                 <span className="text-amber-800">
-                  This clears every order you&apos;ve tried and resets the samples. Are you sure?
+                  This clears <strong>everyone&apos;s</strong> orders and everything the matcher has
+                  learned, and puts the sample customers back. It cannot be undone. Are you sure?
                 </span>
                 <Button
                   type="button"

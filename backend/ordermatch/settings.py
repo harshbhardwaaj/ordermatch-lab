@@ -175,3 +175,15 @@ REST_FRAMEWORK = {
 # Called only from backend code (OpenAI API for extraction/matching-assist,
 # Phase 13). Never read this from frontend code or send it to the browser.
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
+# One shared workspace instead of a private copy per browser (see
+# common.middleware.DemoSessionMiddleware).
+#
+# Set, because this build goes to one company. The learning loop is the whole
+# point of it, and a memory that evaporates when you close the tab is not a
+# memory: corrections have to still be there tomorrow, and be there for the
+# colleague you forwarded the link to. That is worth more here than isolation.
+#
+# Unset it (SHARED_DEMO_SESSION_ID="") for a link sent to strangers, who would
+# otherwise be able to read and reset each other's work.
+SHARED_DEMO_SESSION_ID = os.environ.get("SHARED_DEMO_SESSION_ID", "building-radar")

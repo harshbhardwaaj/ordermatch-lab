@@ -67,6 +67,7 @@ def make_candidate(line_item, catalog_item, candidate_id="match-test-1", rank=1)
     )
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class OrderReadEndpointsTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -99,6 +100,7 @@ class OrderReadEndpointsTests(TestCase):
         self.assertFalse(body["line_items"][0]["resolved_by_decision"])
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class LineItemDecisionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -179,6 +181,7 @@ class LineItemDecisionTests(TestCase):
         self.assertEqual(self.line_item.status, "review-needed")
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class ExceptionResolutionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -205,6 +208,7 @@ class ExceptionResolutionTests(TestCase):
         self.assertEqual(self.exception.status, "resolved")
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class SendToErpTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -308,6 +312,7 @@ class ExtractionModuleTests(TestCase):
 
 
 @override_settings(OPENAI_API_KEY="test-key")
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class ExtractOrderEndpointTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -496,6 +501,7 @@ class ExtractOrderEndpointTests(TestCase):
         self.assertEqual(body["line_items"][0]["status"], "review-needed")
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class ResetDemoDataTests(TestCase):
     """Covers the two real gaps found by reading seed_sample_data.py before
     building the reset: get_or_create silently not resetting setup config,
@@ -565,6 +571,7 @@ class ResetDemoDataTests(TestCase):
         self.assertTrue(OrderRecord.objects.filter(id=other_order.id).exists())
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class DemoSessionIsolationTests(TestCase):
     """Regression coverage for the actual point of demo-session scoping
     (common.middleware.DemoSessionMiddleware): two different visitors,
@@ -610,3 +617,62 @@ class DemoSessionIsolationTests(TestCase):
 
         config_b = client_b.get("/api/setup-configuration/").json()[0]
         self.assertEqual(config_b["auto_approve_threshold"], 85)
+
+
+@override_settings(SHARED_DEMO_SESSION_ID="building-radar")
+class SharedWorkspaceTests(TestCase):
+    """One workspace for everyone, which is what a link sent to a single
+    company needs: a correction made on Monday has to still be there on
+    Tuesday, and be there for the colleague it was forwarded to.
+
+    The alternative mode (isolation) is what every other test in this file
+    exercises, and it is what a public link needs instead.
+    """
+
+    def test_every_visitor_lands_in_the_same_workspace(self):
+        first = APIClient()
+        first.credentials(HTTP_X_DEMO_SESSION_ID="whatever-this-browser-had")
+        second = APIClient()  # a different person, no stored id at all
+
+        make_order(order_id="ord-shared-1", demo_session_id="building-radar")
+
+        self.assertEqual(len(first.get("/api/orders/").json()), 1)
+        self.assertEqual(len(second.get("/api/orders/").json()), 1)
+
+    def test_a_stale_id_in_localstorage_cannot_strand_someone(self):
+        """Someone who visited before the switch still has an old id in
+        localStorage. It must be ignored, or they would land in their own empty
+        workspace and wonder where everyone's work went.
+        """
+        make_order(order_id="ord-shared-2", demo_session_id="building-radar")
+
+        stale = APIClient()
+        stale.credentials(HTTP_X_DEMO_SESSION_ID="an-old-random-hex-id")
+        response = stale.get("/api/orders/")
+
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(response["X-Demo-Session-Id"], "building-radar")
+
+    def test_a_correction_survives_for_the_next_visitor(self):
+        from matching.models import CustomerCorrection
+
+        order = make_order(order_id="ord-shared-3", demo_session_id="building-radar")
+        catalog_item = make_catalog_item()
+        line = make_line_item(order)
+        candidate = make_candidate(line, catalog_item)
+
+        monday = APIClient()
+        monday.credentials(HTTP_X_DEMO_SESSION_ID="mondays-browser")
+        monday.post(
+            f"/api/line-items/{line.id}/decide/", {"candidate_id": candidate.id}, format="json"
+        )
+
+        # A different browser, days later. The memory is still there.
+        tuesday = APIClient()
+        customers = tuesday.get("/api/customers/").json()
+
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0]["customer_name"], "Test Customer GmbH")
+        self.assertEqual(
+            CustomerCorrection.objects.filter(demo_session_id="building-radar").count(), 1
+        )

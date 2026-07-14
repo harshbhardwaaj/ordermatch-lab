@@ -1,9 +1,11 @@
 from django.test import TestCase
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from .models import SetupConfiguration
 
 
+@override_settings(SHARED_DEMO_SESSION_ID="")
 class SetupConfigurationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
