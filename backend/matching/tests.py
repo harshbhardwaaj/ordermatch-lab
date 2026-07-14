@@ -617,3 +617,49 @@ class HybridBlockingTests(TestCase):
         merged = _merge([lexical_only, agreed], [semantic_only, agreed], limit=3)
 
         self.assertEqual(merged[0].sku, agreed.sku)
+
+
+class PinnedLineAutoMatchTests(TestCase):
+    """A pin has to survive the confidence gate, or the loop leans without ever
+    learning.
+
+    The gate exists for a good reason: an LLM-resolved line can come back with
+    several closely-ranked candidates and no margin between them, and
+    auto-approving one of those is how a wrong SKU reaches the ERP. But a pinned
+    candidate is not a close call the model is unsure about. It is the answer a
+    reviewer already gave to this exact request, and the ambiguity that made the
+    line hard the first time (four grades of the same bolt) is exactly why the
+    runner-up still scores close on the reorder. Applying the margin to a pin
+    means the reviewer is asked, forever, a question they answered in July.
+    """
+
+    def test_a_pinned_top_candidate_clears_the_gate_despite_a_close_runner_up(self):
+        from orders.services import _is_confidently_ahead
+
+        class FakeCandidate:
+            def __init__(self, score, pinned=False):
+                self.score = score
+                self.learned_signal = {"pinned": True} if pinned else {}
+
+        # The realistic shape: four near-identical grades, so the runner-up is
+        # always within the margin. Without the pin this is a review.
+        close_call = [FakeCandidate(99.0), FakeCandidate(92.0)]
+        self.assertFalse(_is_confidently_ahead(close_call))
+
+        pinned = [FakeCandidate(99.0, pinned=True), FakeCandidate(92.0)]
+        self.assertTrue(
+            _is_confidently_ahead(pinned),
+            "the reviewer already answered this exact request; do not ask again",
+        )
+
+    def test_an_unpinned_close_call_still_goes_to_review(self):
+        """The gate must still do its job for everything that is not a pin."""
+        from orders.services import _is_confidently_ahead
+
+        class FakeCandidate:
+            def __init__(self, score, pinned=False):
+                self.score = score
+                self.learned_signal = {"pinned": True} if pinned else {}
+
+        self.assertFalse(_is_confidently_ahead([FakeCandidate(88.0), FakeCandidate(87.0)]))
+        self.assertTrue(_is_confidently_ahead([FakeCandidate(95.0), FakeCandidate(60.0)]))
