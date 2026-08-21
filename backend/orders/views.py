@@ -4,6 +4,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from common.throttling import ExtractBurstThrottle, ExtractDailyThrottle
 from matching.context_file import build_context_file, get_context_file
 from matching.memory import record_correction
 from matching.models import MatchCandidate, MatchDecision
@@ -66,7 +67,13 @@ class OrderRecordViewSet(viewsets.ReadOnlyModelViewSet):
         order.save()
         return Response(OrderRecordSerializer(order).data)
 
-    @action(detail=False, methods=["post"])
+    @action(
+        detail=False,
+        methods=["post"],
+        # The only endpoint here that spends money, so the only one rate limited.
+        # See common/throttling.py.
+        throttle_classes=[ExtractBurstThrottle, ExtractDailyThrottle],
+    )
     def extract(self, request):
         """Real extraction + hybrid matching (T114-T121) for a pasted-text
         order, replacing the client-side timer simulation. Returns the

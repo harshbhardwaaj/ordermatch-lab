@@ -103,6 +103,15 @@ DATABASES = {
             "postgres://ordermatch:ordermatch_dev_pw@localhost:5432/ordermatch_dev",
         ),
         conn_max_age=600,
+        # Load-bearing when the database is serverless and suspends while idle
+        # (Neon scales to zero). conn_max_age keeps a connection cached for ten
+        # minutes, but the server on the other end can go away inside that
+        # window, and Django would otherwise hand the dead socket to the next
+        # request and raise OperationalError. This pings the connection before
+        # reusing it and reconnects if it has gone stale — one cheap round trip
+        # on a reused connection, against an otherwise unexplainable 500 for the
+        # first visitor after a quiet spell, which on a demo link is most of them.
+        conn_health_checks=True,
     )
 }
 
@@ -173,6 +182,14 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    # Rates only, no DEFAULT_THROTTLE_CLASSES: the limit is attached to the one
+    # endpoint that spends OpenAI credit, not to the whole API. See
+    # common.throttling for why, and orders.views.OrderRecordViewSet.extract for
+    # where it is applied.
+    "DEFAULT_THROTTLE_RATES": {
+        "extract_burst": "10/hour",
+        "extract_daily": "30/day",
+    },
 }
 
 # Called only from backend code (OpenAI API for extraction/matching-assist,
