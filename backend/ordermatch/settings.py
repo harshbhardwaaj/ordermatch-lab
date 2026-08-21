@@ -185,7 +185,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 # Empty by default, and that direction is the whole point.
 #
 # Set to a string, every visitor shares one workspace. That is right for a link
-# addressed to one company: the learning loop is the point of this build, and a
+# addressed to a single company: the learning loop is the point of this build, and a
 # memory that evaporates when you close the tab is not a memory. Corrections have
 # to still be there tomorrow, and be there for the colleague they forwarded it to.
 #
@@ -196,6 +196,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 # company is reading, someone can wipe your deliverable while they have it open.
 #
 # So the deployment that wants the risky mode has to ask for it by name
-# (SHARED_DEMO_SESSION_ID=building-radar), and forgetting to set anything can only
+# (SHARED_DEMO_SESSION_ID=shared-demo), and forgetting to set anything can only
 # ever land you in the safe one.
 SHARED_DEMO_SESSION_ID = os.environ.get("SHARED_DEMO_SESSION_ID", "")

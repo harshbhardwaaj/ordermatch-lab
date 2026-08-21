@@ -1,26 +1,38 @@
 /**
  * Who this build is addressed to, and how it looks as a result.
  *
- * The same code ships to more than one audience: a private link addressed to a
- * specific company, and a public link addressed to nobody. Those differ only in
- * skin and salutation, never in behaviour, so they must not be different
- * branches. A fork drifts, and the bug you fix on one is the bug you still have
- * on the other.
+ * The same code can ship to more than one audience: a public link addressed to
+ * nobody, and — when there is one — a private link addressed to a specific
+ * company. Those differ only in skin and salutation, never in behaviour, so
+ * they must not be different branches. A fork drifts, and the bug you fix on
+ * one is the bug you still have on the other.
  *
- * So: one codebase, one database, and the audience chosen at build time by
- * NEXT_PUBLIC_BRAND. Adding a brand is an entry in this file plus an env var on
- * the deployment, not a copy of the app.
+ * So: one codebase, one database, and the audience chosen at build time. Today
+ * there is exactly one audience, `neutral`, and it is the default. Adding an
+ * addressed build is an entry in this file, a `data-brand` palette block in
+ * app/globals.css keyed on the same id, and an env var on that deployment —
+ * never a copy of the app.
  *
- * The default is deliberately "neutral". If the env var is missing or misspelt
- * on a deploy, the failure has to be the harmless one: a public URL that never
- * dressed itself in someone else's logo. Shipping a client's brand by accident
- * is the outcome worth engineering against, because a page carrying their mark
- * and palette reads as an official property of theirs, which it is not.
+ * If an addressed build is ever added back, keep the selector below a direct
+ * comparison against the inlined NEXT_PUBLIC_* value rather than a lookup in a
+ * registry object. Next substitutes those at build time, so a comparison folds
+ * to a constant and the minifier drops the unreachable brand entirely. A
+ * `BRANDS[key]` lookup cannot be folded, so every brand would survive into the
+ * bundle and the public site would ship a client's name and logo path in its
+ * JavaScript for anyone who opened devtools. It would never render, but it
+ * would be there, which is not what "their mark is never on the public build"
+ * should mean. Same reason BrandMark renders its glyph inline rather than
+ * choosing between several.
  *
- * Palette lives in app/globals.css, keyed on the same id via data-brand.
+ * The default is deliberately the neutral one. If an env var is ever missing or
+ * misspelt on a deploy, the failure has to be the harmless one: a public URL
+ * that never dressed itself in someone else's logo. Shipping a client's brand
+ * by accident is the outcome worth engineering against, because a page carrying
+ * their mark and palette reads as an official property of theirs, which it is
+ * not.
  */
 
-export type BrandId = "neutral" | "buildingradar";
+export type BrandId = "neutral";
 
 export type Brand = {
   id: BrandId;
@@ -64,7 +76,7 @@ export type Brand = {
   /** Fills "Relevant here because ___ needs builders who…" on the proof page. */
   proofAudience: string;
 
-  /** Eyebrow above the problem statement. The addressed build can say "the
+  /** Eyebrow above the problem statement. An addressed build can say "the
    *  problem you gave me", because they did. A stranger on a public link gave
    *  nobody anything, and copy that talks past its reader is worse than plain. */
   problemEyebrow: string;
@@ -105,53 +117,4 @@ const NEUTRAL: Brand = {
   problemEyebrow: "The problem",
 };
 
-/**
- * The private link sent to Building Radar. Their palette and their mark,
- * because the page is a deliverable addressed to them and the hero copy
- * answers the case they set in the interview.
- *
- * Authorship stays unmistakable regardless: the byline is Harsh's on every
- * screen, and their logo is only ever the thing the letter is addressed to.
- */
-const BUILDING_RADAR: Brand = {
-  id: "buildingradar",
-  addressee: "Building Radar",
-  addresseeLogo: "/building-radar-logo.svg",
-  navTitle: "Building Radar",
-  navSubtitle: "Prototype by Harsh",
-  hero: {
-    eyebrow: "A prototype by Harsh Bhardwaj, for",
-    headlineTop: "Twenty minutes wasn't enough.",
-    headlineLead: "So I ",
-    headlineAccent: "finished it",
-    headlineTail: ".",
-    subtitle:
-      "You asked for a matcher the user can teach. Here it is, working: correct it once, and it stops making that mistake for that customer.",
-  },
-  contactHeadline: "Let's talk about Building Radar.",
-  metaDescription:
-    "A product matcher the user can teach: correct a SKU once and it stops making that mistake for that customer. Built by Harsh Bhardwaj in response to Building Radar's case challenge.",
-  proofAudience: "Building Radar",
-  problemEyebrow: "The problem you gave me",
-};
-
-/**
- * Deliberately a direct comparison against the inlined env var, and not a
- * lookup in a registry object.
- *
- * NEXT_PUBLIC_* values are substituted into the source at build time, so this
- * literally compiles to `"neutral" === "buildingradar" ? BUILDING_RADAR :
- * NEUTRAL`, folds to `NEUTRAL`, and the minifier then drops BUILDING_RADAR as
- * unreachable. A `BRANDS[key]` lookup cannot be folded, so both brands would
- * survive into the bundle and the public site would ship a client's name and
- * logo path in its JavaScript for anyone who opened devtools. It would never
- * render, but it would be there, which is not what "their mark is never on the
- * public build" should mean.
- *
- * Same reason BrandMark switches on the env var rather than on brand.id: it
- * keeps their SVG path out of the neutral bundle entirely.
- */
-export const brand: Brand =
-  process.env.NEXT_PUBLIC_BRAND === "buildingradar" ? BUILDING_RADAR : NEUTRAL;
-
-export const isAddressedBuild = brand.addressee !== null;
+export const brand: Brand = NEUTRAL;

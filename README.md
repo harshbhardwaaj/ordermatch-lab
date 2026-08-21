@@ -1,6 +1,6 @@
 # OrderMatch Lab
 
-A working product prototype, built by Harsh Bhardwaj in response to [Building Radar](https://buildingradar.com)'s case challenge.
+A working product prototype, built by Harsh Bhardwaj in response to a technical case challenge.
 
 The prototype reads a messy purchase order, matches line items to a catalog, shows confidence, routes uncertain lines to a person, and sends clean orders to an ERP. Around it is a guided narrative explaining the problem, the engineering decisions behind it, and why I built it this way.
 

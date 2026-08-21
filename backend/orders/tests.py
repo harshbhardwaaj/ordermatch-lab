@@ -619,7 +619,7 @@ class DemoSessionIsolationTests(TestCase):
         self.assertEqual(config_b["auto_approve_threshold"], 85)
 
 
-@override_settings(SHARED_DEMO_SESSION_ID="building-radar")
+@override_settings(SHARED_DEMO_SESSION_ID="shared-demo")
 class SharedWorkspaceTests(TestCase):
     """One workspace for everyone, which is what a link sent to a single
     company needs: a correction made on Monday has to still be there on
@@ -634,7 +634,7 @@ class SharedWorkspaceTests(TestCase):
         first.credentials(HTTP_X_DEMO_SESSION_ID="whatever-this-browser-had")
         second = APIClient()  # a different person, no stored id at all
 
-        make_order(order_id="ord-shared-1", demo_session_id="building-radar")
+        make_order(order_id="ord-shared-1", demo_session_id="shared-demo")
 
         self.assertEqual(len(first.get("/api/orders/").json()), 1)
         self.assertEqual(len(second.get("/api/orders/").json()), 1)
@@ -644,19 +644,19 @@ class SharedWorkspaceTests(TestCase):
         localStorage. It must be ignored, or they would land in their own empty
         workspace and wonder where everyone's work went.
         """
-        make_order(order_id="ord-shared-2", demo_session_id="building-radar")
+        make_order(order_id="ord-shared-2", demo_session_id="shared-demo")
 
         stale = APIClient()
         stale.credentials(HTTP_X_DEMO_SESSION_ID="an-old-random-hex-id")
         response = stale.get("/api/orders/")
 
         self.assertEqual(len(response.json()), 1)
-        self.assertEqual(response["X-Demo-Session-Id"], "building-radar")
+        self.assertEqual(response["X-Demo-Session-Id"], "shared-demo")
 
     def test_a_correction_survives_for_the_next_visitor(self):
         from matching.models import CustomerCorrection
 
-        order = make_order(order_id="ord-shared-3", demo_session_id="building-radar")
+        order = make_order(order_id="ord-shared-3", demo_session_id="shared-demo")
         catalog_item = make_catalog_item()
         line = make_line_item(order)
         candidate = make_candidate(line, catalog_item)
@@ -674,7 +674,7 @@ class SharedWorkspaceTests(TestCase):
         self.assertEqual(len(customers), 1)
         self.assertEqual(customers[0]["customer_name"], "Test Customer GmbH")
         self.assertEqual(
-            CustomerCorrection.objects.filter(demo_session_id="building-radar").count(), 1
+            CustomerCorrection.objects.filter(demo_session_id="shared-demo").count(), 1
         )
 
 

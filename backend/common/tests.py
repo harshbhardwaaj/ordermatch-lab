@@ -55,12 +55,12 @@ class DemoSessionHeaderValidationTests(TestCase):
         self.assertRegex(request_id, r"^[a-f0-9]{32}$")
         self.assertEqual(request_id, response_id)
 
-    @override_settings(SHARED_DEMO_SESSION_ID="building-radar")
+    @override_settings(SHARED_DEMO_SESSION_ID="shared-demo")
     def test_shared_mode_ignores_the_header_entirely(self):
         """The addressed build pins everyone to one workspace; a supplied header,
         valid or not, must not change that."""
         request_id, _ = self._session_for("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")
-        self.assertEqual(request_id, "building-radar")
+        self.assertEqual(request_id, "shared-demo")
 
 
 class _EchoResponse(dict):
